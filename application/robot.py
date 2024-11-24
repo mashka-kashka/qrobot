@@ -1,7 +1,8 @@
 import math
-import json
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QPoint
+import toml
+from PyQt6.QtCore import QObject, QPoint
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
+from google.protobuf.json_format import MessageToDict
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.python.solutions import drawing_utils as mp_drawing
@@ -12,10 +13,24 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import numpy as np
 import pandas as pd
-from triton.language import dtype
+import pickle
+import torch
+from torch.ao.quantization import get_default_static_quant_reference_module_mappings
 
 
 class QRobot(QObject):
+    FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
+                        'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
+                        'eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookDownLeft', 'eyeLookDownRight',
+                        'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight',
+                        'eyeLookUpLeft', 'eyeLookUpRight', 'eyeSquintLeft', 'eyeSquintRight',
+                        'eyeWideLeft', 'eyeWideRight', 'jawForward', 'jawLeft', 'jawOpen', 'jawRight',
+                        'mouthClose', 'mouthDimpleLeft', 'mouthDimpleRight', 'mouthFrownLeft',
+                        'mouthFrownRight', 'mouthFunnel', 'mouthLeft', 'mouthLowerDownLeft',
+                        'mouthLowerDownRight', 'mouthPressLeft', 'mouthPressRight', 'mouthPucker',
+                        'mouthRight', 'mouthRollLower', 'mouthRollUpper', 'mouthShrugLower', 'mouthShrugUpper',
+                        'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight',
+                        'mouthUpperUpLeft', 'mouthUpperUpRight', 'noseSneerLeft', 'noseSneerRight']
     HAND_LANDMARKS = ['WRIST', 'THUMB_CMC', 'THUMB_MCP', 'THUMB_IP', 'THUMB_TIP', 'INDEX_FINGER_MCP',
                       'INDEX_FINGER_PIP',
                       'INDEX_FINGER_DIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_MCP', 'MIDDLE_FINGER_PIP',
@@ -73,6 +88,31 @@ class QRobot(QObject):
                                               num_faces=1)
         self.face_detector = vision.FaceLandmarker.create_from_options(options)
 
+        # Модели для распознвания жестов и эмоций
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        else:
+            self.device = torch.device("cpu")
+
+        self.gestures_labels = None
+        self.emotions_labels = None
+        self.gestures_model = None
+        self.emotions_model = None
+
+        with open('config.toml', 'r') as f:
+            self.config = toml.load(f)
+            self.gestures_labels = pd.read_csv(self.config["models"]["gestures_labels"])
+
+            model_file = open(self.config["models"]["gestures_model"], 'rb')
+            self.gestures_model = pickle.load(model_file)
+            self.gestures_model.to(self.device)
+
+            self.emotions_labels = pd.read_csv(self.config["models"]["emotions_labels"])
+
+            model_file = open(self.config["models"]["emotions_model"], 'rb')
+            self.emotions_model = pickle.load(model_file)
+            self.emotions_model.to(self.device)
+
     def get_ranges(self, input_list, width, height):
         x_min = x_max = None
         y_min = y_max = None
@@ -95,8 +135,10 @@ class QRobot(QObject):
                     z_max = min(1.0, lm.z)
                 if x_min > 0.0 or x_max < 1.0 or y_min > 0.0 or y_max < 1.0:
                     visible = True
-            data = {'visible': visible, 'x_min': x_min, 'x_max': x_max,
-                    'y_min': y_min, 'y_max': y_max, 'z_min': z_min, 'z_max': z_max,
+            data = {'visible': visible,
+                    'x_min': x_min, 'x_max': x_max, 'dx': x_max - x_min,
+                    'y_min': y_min, 'y_max': y_max, 'dy': y_max - y_min,
+                    'z_min': z_min, 'z_max': z_max, 'dz': z_max - z_min,
                     'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
         return data
     # Обработка кадра
@@ -112,16 +154,26 @@ class QRobot(QObject):
         annotated_image = self.draw_faces_on_image(image, face_detection_result)
 
         if len(face_detection_result.face_landmarks) > 0:
-            data['Лицо'] = self.get_ranges(face_detection_result.face_landmarks[0], width, height)
+            ranges = self.get_ranges(face_detection_result.face_landmarks[0], width, height)
+            data['Лицо'] = ranges
+            emotion = self.detect_emotion(face_detection_result.face_blendshapes[0])
+            if not emotion is None:
+                data['Лицо']['Эмоция'] = emotion
 
-        # Распознавание рук и поз
+            # Распознавание рук и поз
         hand_detection_results = self.hand_detector.process(image)
         hand_landmarks_list = hand_detection_results.multi_hand_landmarks
         if hand_landmarks_list:
             for idx, lm in enumerate(hand_landmarks_list):
                 bounds = self.get_ranges(lm.landmark, width, height)
                 classification = hand_detection_results.multi_handedness[idx].classification[0]
-                data["Правая ладонь" if classification.label == 'Left' else "Левая ладонь"] = bounds
+                palm = "Правая ладонь" if classification.label == 'Left' else "Левая ладонь"
+                data[palm] = bounds
+                score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
+                gesture = self.detect_gesture(lm.landmark, bounds, score)
+                if not gesture is None:
+                    data[palm]['Жест'] = gesture
+                    #print(f"{palm}: {gesture}")
 
         sceleton = {}
         pose_detection_result = self.pose_detector.detect(mp_image)
@@ -151,16 +203,90 @@ class QRobot(QObject):
 #            json.dump(data, outfile)
 
         annotated_image = self.draw_sceleton_on_image(annotated_image, data)
-
-        #annotated_image = self.draw_poses_on_image(annotated_image, pose_detection_result, hand_detection_results)
-        #annotated_image = self.draw_hands_on_image(annotated_image, hand_detection_results)
+        annotated_image = self.draw_emotion_on_image(annotated_image, data)
+        annotated_image = self.draw_gestures_on_image(annotated_image, data)
 
         return annotated_image
 
-    def draw_sceleton_on_image(self, image, data):
+    def detect_gesture(self, landmarks, ranges, score):
+        if not self.emotions_model:
+            return None
+
+        sample = [score]
+
+        dx = ranges['dx']
+        dy = ranges['dy']
+        dz = ranges['dz']
+        min_x = ranges['x_min']
+        min_y = ranges['y_min']
+        min_z = ranges['z_min']
+        scale = max(dx, dy, dz)
+
+        for i, lm in enumerate(landmarks):
+            sample.append((lm.x - min_x - dx / 2.) / scale + 0.5)
+            sample.append((lm.y - min_y - dy / 2.) / scale + 0.5)
+            sample.append((lm.z - min_z - dz / 2.) / scale + 0.5)
+
+        input = torch.unsqueeze(torch.tensor(sample).double(), dim=0).to(self.device)
+        prediction = self.gestures_model(input)
+        score = max(prediction[0])
+        return self.gestures_model.get_label(prediction)
+
+    def draw_gestures_on_image(self, image, data):
+        if self.gestures_labels is None:
+            return image
+
         painter = QPainter(image)
         painter.setFont(self.emoji_font)
-        #painter.drawText(QPoint(5, 75), "😀")
+
+        for palm in ['Правая ладонь', 'Левая ладонь']:
+            try:
+                label = self.gestures_labels.loc[data[palm]['Жест']]['Unicode']
+                if issubclass(type(label), str):
+                    pos_x = 5
+
+                    if palm == 'Левая ладонь':
+                        pos_x = image.width() - 100
+
+                    painter.drawText(QPoint(pos_x, image.height() - 30), label)
+            except:
+                pass
+
+        painter.end()
+        return image
+
+    def detect_emotion(self, face_blendshapes):
+        if self.emotions_model is None:
+            return None
+
+        sample = []
+        for i in range(len(QRobot.FACE_BLENDSHAPES)):
+            sample.append(face_blendshapes[i].score)
+
+        input = torch.unsqueeze(torch.tensor(sample).double(), dim=0).to(self.device)
+        prediction = self.emotions_model(input)
+        score = max(prediction[0])
+        return self.emotions_model.get_label(prediction)
+
+    def draw_emotion_on_image(self, image, data):
+        if self.emotions_labels is None:
+            return image
+
+        try:
+            label = self.emotions_labels.loc[data['Лицо']['Эмоция']]['Unicode']
+            if issubclass(type(label), str):
+                painter = QPainter(image)
+                painter.setFont(self.emoji_font)
+                painter.drawText(QPoint(5, 75), label)
+                painter.end()
+        except:
+            pass
+
+        return image
+
+    def draw_sceleton_on_image(self, image, data):
+        painter = QPainter(image)
+
         sceleton = data['Скелет']
         painter.setPen(self.green_pen)
         for segment in QRobot.ROBOT_SEGMENTS:

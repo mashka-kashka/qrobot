@@ -8,3 +8,9 @@ height = 768
 video_port = "1580"
 data_port = "2024"
 host = "192.168.1.5"
+
+[models]
+gestures_model = "../models/gestures2.mdl"
+gestures_labels = "../models/жесты.csv"
+emotions_model = "../models/emotions2.mdl"
+emotions_labels = "../models/эмоции.csv"

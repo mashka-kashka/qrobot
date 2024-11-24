@@ -9,8 +9,6 @@ from camera import Camera
 from robot import QRobot
 import tensorflow as tf
 import platform
-import socket
-import toml
 import sys
 import cv2
 
