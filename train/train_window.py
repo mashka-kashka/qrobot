@@ -418,6 +418,7 @@ class TrainWindow(QMainWindow):
         if fname[0]:
             self.model_filename = fname[0]
             self.ui.tb_save.setEnabled(False)
+            self.on_save_model()
 
     @pyqtSlot()
     def on_open_labels(self):
