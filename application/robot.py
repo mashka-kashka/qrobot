@@ -93,6 +93,7 @@ class QRobot(QObject):
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
+            torch.serialization.register_package(0, lambda x: x.device.type, lambda x, _: x.cpu())
 
         self.gestures_labels = None
         self.emotions_labels = None
