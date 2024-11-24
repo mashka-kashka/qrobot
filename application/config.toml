@@ -7,7 +7,7 @@ height = 768
 [network]
 video_port = "1580"
 data_port = "2024"
-host = "192.168.1.5"
+host = "192.168.1.6"
 
 [models]
 gestures_model = "../models/gestures2.mdl"
