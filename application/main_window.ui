@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../icons/robot.png</normaloff>../icons/robot.png</iconset>
+    <normaloff>../../robot/qrobot/icons/robot.png</normaloff>../../robot/qrobot/icons/robot.png</iconset>
   </property>
   <property name="toolButtonStyle">
    <enum>Qt::ToolButtonIconOnly</enum>
@@ -37,12 +37,12 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tabCamera">
        <attribute name="icon">
         <iconset>
-         <normaloff>../icons/eye.png</normaloff>../icons/eye.png</iconset>
+         <normaloff>../../robot/qrobot/icons/eye.png</normaloff>../../robot/qrobot/icons/eye.png</iconset>
        </attribute>
        <attribute name="title">
         <string>Камера</string>
@@ -50,6 +50,48 @@
        <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
          <widget class="QGraphicsView" name="gv_camera"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabServos">
+       <attribute name="icon">
+        <iconset>
+         <normaloff>../icons/arm.png</normaloff>../icons/arm.png</iconset>
+       </attribute>
+       <attribute name="title">
+        <string>Сервоприводы</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QAbstractScrollArea::AdjustToContents</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+          <widget class="QWidget" name="sa_servos">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>717</width>
+             <height>300</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_5">
+            <item row="0" column="0">
+             <layout class="QGridLayout" name="gl_servos"/>
+            </item>
+           </layout>
+          </widget>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -90,8 +132,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../icons/robot-green.png</normaloff>
-     <normalon>../icons/robot-red.png</normalon>../icons/robot-green.png</iconset>
+     <normaloff>../../robot/qrobot/icons/robot_green.png</normaloff>
+     <normalon>../../robot/qrobot/icons/robot_red.png</normalon>../../robot/qrobot/icons/robot_green.png</iconset>
    </property>
    <property name="text">
     <string>Активировать робота</string>
@@ -106,7 +148,7 @@
   <action name="actionConfig">
    <property name="icon">
     <iconset>
-     <normaloff>../icons/gear.png</normaloff>../icons/gear.png</iconset>
+     <normaloff>../../robot/qrobot/icons/gear.png</normaloff>../../robot/qrobot/icons/gear.png</iconset>
    </property>
    <property name="text">
     <string>Настройки</string>
@@ -118,7 +160,7 @@
   <action name="actionExit">
    <property name="icon">
     <iconset>
-     <normaloff>../icons/quit.png</normaloff>../icons/quit.png</iconset>
+     <normaloff>../../robot/qrobot/icons/quit.png</normaloff>../../robot/qrobot/icons/quit.png</iconset>
    </property>
    <property name="text">
     <string>Выход</string>
@@ -136,8 +178,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../icons/chip-green.png</normaloff>
-     <normalon>../icons/chip-red.png</normalon>../icons/chip-green.png</iconset>
+     <normaloff>../../robot/qrobot/icons/chip-green.png</normaloff>
+     <normalon>../../robot/qrobot/icons/chip-red.png</normalon>../../robot/qrobot/icons/chip-green.png</iconset>
    </property>
    <property name="text">
     <string>Активировать компьютер</string>

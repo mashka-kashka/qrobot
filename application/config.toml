@@ -14,3 +14,11 @@ gestures_model = "../models/gestures2.mdl"
 gestures_labels = "../models/жесты.csv"
 emotions_model = "../models/emotions2.mdl"
 emotions_labels = "../models/эмоции.csv"
+
+[servos]
+channels = [1, 2, 3, 4]
+positions = [0, 0, 0, 0]
+descriptions = ["Подъём головы",
+                "Поворот шеи",
+                "Подъём левого плеча",
+                "Подъём правого плеча"]

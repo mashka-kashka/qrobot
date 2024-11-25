@@ -1,8 +1,9 @@
 from time import time, localtime, strftime
-from PyQt6 import QtCore, QtWidgets
-from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage, QIcon
-from PyQt6.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGridLayout
+from PyQt6 import QtGui, QtCore, QtWidgets
+from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap
+from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QSpacerItem, QLabel, QSizePolicy, QSlider
 from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
+
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
 from net_config_dialog import NetConfigDialog
@@ -31,8 +32,35 @@ class QRobotMainWindow(QMainWindow):
         self.ui.gv_camera.setScene(self.scene)
         self.scenePixmapItem = None
 
+        with open('config.toml', 'r') as f:
+            self.config = toml.load(f)
+
+            servos = self.config["servos"]
+            descriptions = servos["descriptions"]
+            positions = servos["positions"]
+
+            layout = self.ui.gl_servos
+            for row, description in enumerate(descriptions):
+                label = QLabel(description)
+                layout.addWidget(label, row, 0)
+                slider = QSlider(QtCore.Qt.Orientation.Horizontal)
+                slider.setSliderPosition(positions[row])
+                slider.setMinimum(0)
+                slider.setMaximum(2500)
+                slider.valueChanged.connect(self.on_slider_value_changed)
+                slider.setProperty("id", row)
+                layout.addWidget(slider, row, 1)
+
         app = QtWidgets.QApplication.instance()
         app.show_frame_signal.connect(self.show_frame)
+
+
+    @pyqtSlot()
+    def on_slider_value_changed(self):
+        slider = self.sender()
+        id = slider.property("id")
+        print(f"Сервопривод: {id} Значение: {slider.value()}")
+        pass
 
     @pyqtSlot(object)
     def show_frame(self, frame):
