@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QSlider
 from log_message_type import LogMessageType
 from main_window import QRobotMainWindow
 from server import QRobotServer
@@ -16,6 +16,7 @@ import cv2
 class QRobotApplication(QApplication):
     log_signal = pyqtSignal(object, object)
     send_frame_signal = pyqtSignal(object)
+    send_data_signal = pyqtSignal(object)
     show_frame_signal = pyqtSignal(object)
     get_frame_signal = pyqtSignal()
     connection = None
@@ -39,6 +40,7 @@ class QRobotApplication(QApplication):
 
         # Робот
         self.robot = QRobot()
+        self.frame_buffer = []
 
         # Камера
         self.camera_thread = QThread()
@@ -76,6 +78,9 @@ class QRobotApplication(QApplication):
             self.camera_thread.quit()
             self.camera_thread.wait()
 
+    def is_server(self):
+        return self.server.is_running()
+
     def start_server(self):
         self.server.start()
 
@@ -88,6 +93,8 @@ class QRobotApplication(QApplication):
         self.server.reset()
 
     def start_client(self):
+        if self.is_server():
+            self.server.stop()
         self.client.start()
 
     def stop_client(self):
@@ -100,28 +107,71 @@ class QRobotApplication(QApplication):
 
     @pyqtSlot(object)
     def on_frame_captured(self, frame):
-        if self.connection:
+        if self.connection: # Есть подключение
             self.send_frame_signal.emit(frame)
-        else:
-            frame = self.robot.process_frame(frame)
-        self.show_frame_signal.emit(frame)
+            #self.log_signal.emit(f"Отправлен кадр на обработку", LogMessageType.WARNING)
+        else: # Самостоятельный расчёт
+            frame, data = self.robot.process_frame(frame)
+            self.show_frame_signal.emit(frame)
         self.get_frame_signal.emit()
 
     @pyqtSlot(object)
     def on_frame_received(self, frame):
-        _processed_frame = self.robot.process_frame(frame)
-        self.show_frame_signal.emit(_processed_frame)
+        # Получен кадр по сети
+        if self.connection.is_server: # Мы на сервере - нужно выполнить расчёт
+            #self.log_signal.emit(f"Получен кадр для обработки", LogMessageType.WARNING)
+            processed_frame, data = self.robot.process_frame(frame)
+
+            #self.log_signal.emit(f"Обработан кадр", LogMessageType.WARNING)
+
+            # Активна вкладка "Сервоприводы"
+            if self.window.ui.tabServos.isVisible():
+                servos = {}
+                for widget in self.window.ui.gl_servos.children():
+                    if isinstance(widget, QSlider):
+                        channel = widget.property("channel")
+                        servos[channel] = widget.value()
+
+            #self.log_signal.emit(f"Обработанный кадр отрисован", LogMessageType.WARNING)
+            # Отображение обработанного кадра на сервере
+            self.show_frame_signal.emit(processed_frame)
+
+            #self.log_signal.emit(f"Обработанный кадр отправлен", LogMessageType.WARNING)
+            # Отправка кадра и данных клиенту
+            self.send_frame_signal.emit(processed_frame)
+        else: # Мы на клиенте
+            #self.log_signal.emit(f"Получен обработанный кадр", LogMessageType.WARNING)
+
+            # Отображение полученного кадра на
+            self.show_frame_signal.emit(frame)
+
+            # Запрашиваем следующий кадр у камеры
+            #self.get_frame_signal.emit()
+        self.processEvents()
 
     @pyqtSlot(object)
-    def on_connected(self, connection):
+    def on_client_connected(self, connection):
         self.connection = connection
         connection.frame_received_signal.connect(self.on_frame_received)
         self.send_frame_signal.connect(connection.send_frame)
-        self.window.hide_image()
-        self.log_signal.emit(f"Вычисления переданы на внешний компьютер", LogMessageType.WARNING)
+        self.log_signal.emit(f"Ожидание видео для обработки вычислений", LogMessageType.WARNING)
 
     @pyqtSlot(object)
-    def on_disconnected(self, connection):
+    def on_connected_to_server(self, connection):
+        self.connection = connection
+        connection.frame_received_signal.connect(self.on_frame_received)
+        self.send_frame_signal.connect(connection.send_frame)
+        self.log_signal.emit(f"Видео передаётся для обработки на внешний компьютер", LogMessageType.WARNING)
+
+    @pyqtSlot(object)
+    def on_client_disconnected(self, connection):
+        self.connection = None
+        connection.frame_received_signal.disconnect(self.on_frame_received)
+        self.send_frame_signal.disconnect(connection.send_frame)
+        self.get_frame_signal.emit()
+
+    @pyqtSlot(object)
+    def on_disconnected_from_server(self, connection):
         self.connection = None
         connection.frame_received_signal.disconnect(self.on_frame_received)
         self.send_frame_signal.disconnect(connection.send_frame)

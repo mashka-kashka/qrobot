@@ -7,7 +7,7 @@ height = 768
 [network]
 video_port = "1580"
 data_port = "2024"
-host = "192.168.1.6"
+host = "192.168.1.11"
 
 [models]
 gestures_model = "../models/gestures2.mdl"
@@ -16,9 +16,8 @@ emotions_model = "../models/emotions2.mdl"
 emotions_labels = "../models/эмоции.csv"
 
 [servos]
-channels = [1, 2, 3, 4]
-positions = [0, 0, 0, 0]
-descriptions = ["Подъём головы",
-                "Поворот шеи",
-                "Подъём левого плеча",
-                "Подъём правого плеча"]
+channels = [ 1, 2, 3, 4,]
+positions = [ 0, 0, 0, 0,]
+mins = [ 0, 0, 0, 0,]
+maxs = [ 0, 0, 0, 0,]
+descriptions = [ "Подъём головы", "Поворот шеи", "Подъём левого плеча", "Подъём правого плеча",]

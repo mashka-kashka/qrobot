@@ -16,6 +16,9 @@ class QRobotServer(QObject):
         self.logger = logger
         self.log_signal.connect(self.logger.log)
 
+    def is_running(self):
+        return self.running
+
     def start(self):
         if self.running:
             return
@@ -27,7 +30,7 @@ class QRobotServer(QObject):
             _data_port = int(self.config["network"]["data_port"])
             _host = self.config["network"]["host"]
 
-            self.video_connection = QRobotVideoConnection(self.logger, _host, _video_port)
+            self.video_connection = QRobotVideoConnection(self.logger, _host, _video_port, True)
             self.video_connection.stop_signal.connect(self.on_stop)
             self.video_connection.started.connect(self.video_connection.bind)
             self.video_connection.start()

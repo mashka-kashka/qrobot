@@ -106,7 +106,7 @@ class Ui_MainWindow(object):
         self.toolBar.addAction(self.actionExit)
 
         self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         self.actionExit.triggered.connect(MainWindow.close) # type: ignore
         self.actionActivateRobot.toggled['bool'].connect(MainWindow.on_activate_robot) # type: ignore
         self.actionConfig.triggered.connect(MainWindow.on_config) # type: ignore

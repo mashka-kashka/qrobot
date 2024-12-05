@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import torch
-from torch.ao.quantization import get_default_static_quant_reference_module_mappings
+import os
 
 
 class QRobot(QObject):
@@ -102,15 +102,20 @@ class QRobot(QObject):
 
         with open('config.toml', 'r') as f:
             self.config = toml.load(f)
-            self.gestures_labels = pd.read_csv(self.config["models"]["gestures_labels"])
+            models = self.config["models"]
+            gestures_labels_filename = f'{os.getcwd()}/{models["gestures_labels"]}'
+            self.gestures_labels = pd.read_csv(gestures_labels_filename)
 
-            model_file = open(self.config["models"]["gestures_model"], 'rb')
+            gestures_model_filename = f'{os.getcwd()}/{models["gestures_model"]}'
+            model_file = open(gestures_model_filename, 'rb')
             self.gestures_model = pickle.load(model_file)
             self.gestures_model.to(self.device)
 
-            self.emotions_labels = pd.read_csv(self.config["models"]["emotions_labels"])
+            emotions_labels_filename = f'{os.getcwd()}/{models["emotions_labels"]}'
+            self.emotions_labels = pd.read_csv(emotions_labels_filename)
 
-            model_file = open(self.config["models"]["emotions_model"], 'rb')
+            emotions_model_filename = f'{os.getcwd()}/{models["emotions_model"]}'
+            model_file = open(emotions_model_filename, 'rb')
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
 
@@ -207,7 +212,7 @@ class QRobot(QObject):
         annotated_image = self.draw_emotion_on_image(annotated_image, data)
         annotated_image = self.draw_gestures_on_image(annotated_image, data)
 
-        return annotated_image
+        return annotated_image, data
 
     def detect_gesture(self, landmarks, ranges, score):
         if not self.emotions_model:
