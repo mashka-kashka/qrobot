@@ -18,6 +18,7 @@ class QRobotVideoConnection(QThread):
     tcp_server = None
     tcp_client = None
     connection = None
+    min_delta = None
 
     def __init__(self, logger, host, port, is_server):
         super().__init__()
@@ -111,7 +112,7 @@ class QRobotVideoConnection(QThread):
     def on_disconnected_from_server(self):
         self.log_signal.emit(f"Произошло отключение от сервера для передачи видео",
                              LogMessageType.STATUS)
-        self.tcp_client.close()
+        self.tcp_client.abort()
         self.video_disconnected_from_server_signal.emit(self)
 
     def QImageToCvMat(self, incomingImage):
@@ -168,10 +169,16 @@ class QRobotVideoConnection(QThread):
                         connection.flush()
                         _frame = pickle.loads(self.buffer)
                         cur_time = time.time_ns()
-                        #print(f"send:{self.send_time} cur:{cur_time} delta: {cur_time - self.send_time}")
                         delta = cur_time - self.send_time
-                        if delta < 50000000:
-                            self.frame_received_signal.emit(_frame)
+                        if self.min_delta is None:
+                            self.min_delta = self.send_time
+
+                        #print(f"send:{self.send_time} cur:{cur_time} delta: {cur_time - self.send_time} min: {self.min_delta}")
+
+                        #if delta < 100000:
+                        self.frame_received_signal.emit(_frame)
         except Exception as e:
-            self.log_signal.emit(f"Ошибка получения кадра {type(e)}: {e}", LogMessageType.ERROR)
+            self.bytes_expected = 0
+            connection.flush()
+            #self.log_signal.emit(f"Ошибка получения кадра {type(e)}: {e}", LogMessageType.ERROR)
 
