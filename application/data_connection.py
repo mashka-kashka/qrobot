@@ -54,7 +54,7 @@ class QRobotDataConnection(QThread):
             self.tcp_client.disconnected.connect(self.on_disconnected_from_server)
             self.tcp_client.connected.connect(self.on_connected_to_server)
             self.tcp_client.connectToHost(QHostAddress(self.host), self.port)
-            if not self.tcp_client.waitForConnected(1000):
+            if not self.tcp_client.waitForConnected(2000):
                 self.log_signal.emit(f"Не удалось подключиться к серверу для передачи данных", LogMessageType.WARNING)
                 self.data_stop_signal.emit()
         except Exception as e:

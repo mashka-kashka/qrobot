@@ -34,16 +34,18 @@ class QRobotApplication(QApplication):
         self.robot = QRobot()
         self.frame_buffer = []
 
-        server_exists = True
-        with open('config.toml', 'r') as f:
-            self.config = toml.load(f)
-            _video_port = int(self.config["network"]["video_port"])
-            _host = self.config["network"]["host"]
-
-            # Есть ли в сети сервер?
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_exists = sock.connect_ex((_host, _video_port)) == 0
-            sock.close()
+        # Камера
+        self.camera_thread = QThread()
+        self.camera = Camera()
+        self.camera.moveToThread(self.camera_thread)
+        self.camera.activate_robot_signal.connect(self.window.activate_robot)
+        self.camera.activate_computer_signal.connect(self.window.activate_computer)
+        self.camera.frame_captured_signal.connect(self.on_frame_captured)
+        self.get_frame_signal.connect(self.camera.get_frame)
+        self.camera_thread.started.connect(self.camera.start)
+        is_on_raspberry = platform.uname().node == "raspberrypi"
+        if is_on_raspberry:
+            self.camera_thread.start()
 
         # Сервер
         self.server = QRobotServer(self.window)
@@ -59,17 +61,21 @@ class QRobotApplication(QApplication):
         self.window.stop_client_signal.connect(self.stop_client)
         self.window.reset_client_signal.connect(self.reset_client)
 
-        # Камера
-        self.camera_thread = QThread()
-        self.camera = Camera()
-        self.camera.moveToThread(self.camera_thread)
-        self.camera.activate_robot_signal.connect(self.window.activate_robot)
-        self.camera.activate_computer_signal.connect(self.window.activate_computer)
-        self.camera.frame_captured_signal.connect(self.on_frame_captured)
-        self.get_frame_signal.connect(self.camera.get_frame)
-        self.camera_thread.started.connect(self.camera.start)
+        server_exists = True
+        with open('config.toml', 'r') as f:
+            self.config = toml.load(f)
+            _video_port = int(self.config["network"]["video_port"])
+            _host = self.config["network"]["host"]
+
+            # Есть ли в сети сервер?
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_exists = sock.connect_ex((_host, _video_port)) == 0
+            sock.close()
+
         if server_exists:
-            self.camera_thread.start()
+            if not is_on_raspberry:
+                self.camera_thread.start()
+
             self.window.activate_robot(False)
         else:
             self.window.activate_computer(False)
