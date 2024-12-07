@@ -29,14 +29,6 @@ class QRobotApplication(QApplication):
         self.window = window
         self.log_signal.connect(self.window.log)
         self.log_signal.emit(f"Начало работы на {platform.uname().system}", LogMessageType.STATUS)
-        self.log_signal.emit(f"Версия OpenCV: {cv2.__version__}", LogMessageType.STATUS)
-        if cv2.cuda.getCudaEnabledDeviceCount() > 0:
-            self.log_signal.emit(f"Активировано ускорение CUDA", LogMessageType.STATUS)
-        else:
-            self.log_signal.emit(f"Ускорение CUDA отсутствует", LogMessageType.WARNING)
-
-        self.log_signal.emit(f"Tensorflow: {tf.__version__}", LogMessageType.STATUS)
-        self.log_signal.emit(f"GPU: {tf.config.list_physical_devices('GPU')}", LogMessageType.STATUS)
 
         # Робот
         self.robot = QRobot()
@@ -119,11 +111,7 @@ class QRobotApplication(QApplication):
     def on_frame_received(self, frame):
         # Получен кадр по сети
         if self.connection.is_server: # Мы на сервере - нужно выполнить расчёт
-            #self.log_signal.emit(f"Получен кадр для обработки", LogMessageType.WARNING)
             processed_frame, data = self.robot.process_frame(frame)
-
-            #self.log_signal.emit(f"Обработан кадр", LogMessageType.WARNING)
-
             # Активна вкладка "Сервоприводы"
             if self.window.ui.tabServos.isVisible():
                 servos = {}
@@ -132,50 +120,76 @@ class QRobotApplication(QApplication):
                         channel = widget.property("channel")
                         servos[channel] = widget.value()
 
-            #self.log_signal.emit(f"Обработанный кадр отрисован", LogMessageType.WARNING)
             # Отображение обработанного кадра на сервере
             self.show_frame_signal.emit(processed_frame)
 
-            #self.log_signal.emit(f"Обработанный кадр отправлен", LogMessageType.WARNING)
             # Отправка кадра и данных клиенту
             self.send_frame_signal.emit(processed_frame)
+            self.send_data_signal.emit(data)
+
         else: # Мы на клиенте
-            #self.log_signal.emit(f"Получен обработанный кадр", LogMessageType.WARNING)
-
-            # Отображение полученного кадра на
+            # Отображение полученного кадра
             self.show_frame_signal.emit(frame)
-
-            # Запрашиваем следующий кадр у камеры
-            #self.get_frame_signal.emit()
         self.processEvents()
 
     @pyqtSlot(object)
-    def on_client_connected(self, connection):
+    def on_video_client_connected(self, connection):
         self.connection = connection
         connection.frame_received_signal.connect(self.on_frame_received)
         self.send_frame_signal.connect(connection.send_frame)
         self.log_signal.emit(f"Ожидание видео для обработки вычислений", LogMessageType.WARNING)
 
     @pyqtSlot(object)
-    def on_connected_to_server(self, connection):
+    def on_video_connected_to_server(self, connection):
         self.connection = connection
         connection.frame_received_signal.connect(self.on_frame_received)
         self.send_frame_signal.connect(connection.send_frame)
         self.log_signal.emit(f"Видео передаётся для обработки на внешний компьютер", LogMessageType.WARNING)
 
     @pyqtSlot(object)
-    def on_client_disconnected(self, connection):
+    def on_video_client_disconnected(self, connection):
         self.connection = None
         connection.frame_received_signal.disconnect(self.on_frame_received)
         self.send_frame_signal.disconnect(connection.send_frame)
-        self.get_frame_signal.emit()
 
     @pyqtSlot(object)
-    def on_disconnected_from_server(self, connection):
+    def on_video_disconnected_from_server(self, connection):
         self.connection = None
         connection.frame_received_signal.disconnect(self.on_frame_received)
         self.send_frame_signal.disconnect(connection.send_frame)
-        self.get_frame_signal.emit()
+        self.window.activate_robot(True)
+
+    @pyqtSlot(object)
+    def on_data_client_connected(self, connection):
+        self.connection = connection
+        connection.data_received_signal.connect(self.on_data_received)
+        self.send_data_signal.connect(connection.send_data)
+        self.log_signal.emit(f"Ожидание данных для управления роботом", LogMessageType.WARNING)
+
+    @pyqtSlot(object)
+    def on_data_connected_to_server(self, connection):
+        self.connection = connection
+        connection.data_received_signal.connect(self.on_data_received)
+        self.send_data_signal.connect(connection.send_data)
+
+    @pyqtSlot(object)
+    def on_data_client_disconnected(self, connection):
+        self.connection = None
+        connection.data_received_signal.disconnect(self.on_data_received)
+        self.send_data_signal.disconnect(connection.send_data)
+
+    @pyqtSlot(object)
+    def on_data_disconnected_from_server(self, connection):
+        self.connection = None
+        connection.data_received_signal.disconnect(self.on_data_received)
+        self.send_data_signal.disconnect(connection.send_data)
+
+    @pyqtSlot(object)
+    def on_data_received(self, data):
+        # Получены данные по сети
+        if not self.connection.is_server: # Мы на стороне робота
+            print(data)
+        self.processEvents()
 
 if __name__ == "__main__":
     app = QRobotApplication(sys.argv)

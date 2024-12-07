@@ -1,6 +1,6 @@
-from venv import logger
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from PyQt6.QtCore import QObject, pyqtSignal, QThread, pyqtSlot
+from data_connection import QRobotDataConnection
 from video_connection import QRobotVideoConnection
 from log_message_type import LogMessageType
 import toml
@@ -13,6 +13,9 @@ class QRobotServer(QObject):
 
     def __init__(self, logger):
         super().__init__()
+        self.config = None
+        self.data_connection = None
+        self.video_connection = None
         self.logger = logger
         self.log_signal.connect(self.logger.log)
 
@@ -31,9 +34,14 @@ class QRobotServer(QObject):
             _host = self.config["network"]["host"]
 
             self.video_connection = QRobotVideoConnection(self.logger, _host, _video_port, True)
-            self.video_connection.stop_signal.connect(self.on_stop)
+            self.video_connection.video_stop_signal.connect(self.on_stop)
             self.video_connection.started.connect(self.video_connection.bind)
             self.video_connection.start()
+
+            self.data_connection = QRobotDataConnection(self.logger, _host, _data_port, True)
+            self.data_connection.data_stop_signal.connect(self.on_stop)
+            self.data_connection.started.connect(self.data_connection.bind)
+            self.data_connection.start()
 
     def stop(self):
         if not self.running:
@@ -41,6 +49,7 @@ class QRobotServer(QObject):
         self.running = False
         try:
             self.video_connection.close()
+            self.data_connection.close()
         except Exception as e:
             self.log_signal.emit(f"Ошибка {type(e)}: {e}", LogMessageType.ERROR)
 

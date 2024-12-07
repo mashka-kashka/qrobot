@@ -164,7 +164,7 @@ class QRobot(QObject):
             data['Лицо'] = ranges
             emotion = self.detect_emotion(face_detection_result.face_blendshapes[0])
             if not emotion is None:
-                data['Лицо']['Эмоция'] = emotion
+                data['Лицо']['Эмоция'] = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
 
             # Распознавание рук и поз
         hand_detection_results = self.hand_detector.process(image)
@@ -178,7 +178,7 @@ class QRobot(QObject):
                 score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
                 gesture = self.detect_gesture(lm.landmark, bounds, score)
                 if not gesture is None:
-                    data[palm]['Жест'] = gesture
+                    data[palm]['Жест'] = (int(gesture),self.gestures_labels.loc[gesture]['Unicode'])
                     #print(f"{palm}: {gesture}")
 
         sceleton = {}
