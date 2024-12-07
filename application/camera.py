@@ -48,10 +48,14 @@ class Camera(QObject):
     def get_frame(self):
         if not self.running:
             return
-        if self.picam2:
-            _frame = self.picam2.capture_array()
-            self.frame_captured_signal.emit(_frame)
-        if self.cap:
-            ret, frame = self.cap.read()
-            if ret:
-                self.frame_captured_signal.emit(frame)
+
+        try:
+            if self.picam2:
+                _frame = self.picam2.capture_array()
+                self.frame_captured_signal.emit(_frame)
+            if self.cap:
+                ret, frame = self.cap.read()
+                if ret:
+                    self.frame_captured_signal.emit(frame)
+        except:
+            pass

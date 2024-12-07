@@ -157,7 +157,6 @@ class QRobotMainWindow(QMainWindow):
             self.ui.actionActivateComputer.setText(_translate("MainWindow", "Отключить компьютер"))
             self.ui.actionActivateComputer.setIconText(_translate("MainWindow", "Отключить компьютер"))
             self.ui.actionActivateRobot.setEnabled(False)
-            self.app.camera.stop()
             self.start_server_signal.emit()
         else:
             self.ui.actionActivateComputer.setStatusTip(_translate("MainWindow", "Активировать компьютер"))
