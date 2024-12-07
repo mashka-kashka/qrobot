@@ -26,8 +26,6 @@ class QRobotApplication(QApplication):
         super().__init__(argv)
         self.sent_frames = []
         self.received_frames = []
-        self.fsps = 0
-        self.frps = 0
 
     def start(self, window):
         # Главное окно
@@ -63,28 +61,29 @@ class QRobotApplication(QApplication):
         self.window.stop_client_signal.connect(self.stop_client)
         self.window.reset_client_signal.connect(self.reset_client)
 
-        is_on_raspberry = platform.uname().node == "raspberrypi"
-        if is_on_raspberry:
-            self.camera_thread.start()
-        else:
-            server_exists = False
-            with open('config.toml', 'r') as f:
-                self.config = toml.load(f)
-                _video_port = int(self.config["network"]["video_port"])
-                _host = self.config["network"]["host"]
-
-                # Есть ли в сети сервер?
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                server_exists = sock.connect_ex((_host, _video_port)) == 0
-                sock.close()
-
-            if server_exists:
-                if not is_on_raspberry:
-                    self.camera_thread.start()
-
-                self.window.activate_robot(False)
-            else:
-                self.window.activate_computer(False)
+        # is_on_raspberry = platform.uname().node == "raspberrypi"
+        # if is_on_raspberry:
+        #     self.camera_thread.start()
+        # else:
+        self.camera_thread.start()
+        #     server_exists = False
+        #     with open('config.toml', 'r') as f:
+        #         self.config = toml.load(f)
+        #         _video_port = int(self.config["network"]["video_port"])
+        #         _host = self.config["network"]["host"]
+        #
+        #         # Есть ли в сети сервер?
+        #         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #         server_exists = sock.connect_ex((_host, _video_port)) == 0
+        #         sock.close()
+        #
+        #     if server_exists:
+        #         if not is_on_raspberry:
+        #             self.camera_thread.start()
+        #
+        #         self.window.activate_robot(False)
+        #     else:
+        #         self.window.activate_computer(False)
 
     def stop(self):
         self.stop_camera()
@@ -168,8 +167,8 @@ class QRobotApplication(QApplication):
             if len(self.received_frames) > 10:
                 self.received_frames.pop(0)
             if len(self.received_frames) == 10:
-                self.frps = (self.received_frames[-1] - self.received_frames[0]) #// 10000000
-                #print(f"Количество получаемых кадров в секунду: {self.frps} {self.fsps // self.frps}")
+                self.fpps = (self.received_frames[-1] - self.received_frames[0]) // 10000000
+                #print(f"Количество получаемых кадров в секунду: {self.fpps} {self.frps // self.fpps}")
 
         self.processEvents()
 
