@@ -1,8 +1,8 @@
 from PyQt6.QtCore import pyqtSlot, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QApplication
-from train.train_window import TrainWindow
-from train.robocamera import RoboCamera
+from train_window import TrainWindow
+from robocamera import RoboCamera
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision

@@ -1,8 +1,7 @@
 from time import localtime, strftime
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage
-from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QSpacerItem, \
-    QFrame
+from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider
 from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
 
 from main_window_ui import Ui_MainWindow

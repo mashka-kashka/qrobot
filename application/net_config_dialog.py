@@ -1,7 +1,4 @@
 from PyQt6.QtWidgets import QDialog
-from netifaces import interfaces
-import platform
-
 from net_config_dialog_ui import Ui_NetConfigDialog
 import netifaces as ni
 
