@@ -247,7 +247,7 @@ class QRobot(QObject):
 
         for palm in ['Правая ладонь', 'Левая ладонь']:
             try:
-                label = self.gestures_labels.loc[data[palm]['Жест']]['Unicode']
+                label = data[palm]['Жест'][1]
                 if issubclass(type(label), str):
                     pos_x = 5
 
@@ -279,7 +279,7 @@ class QRobot(QObject):
             return image
 
         try:
-            label = self.emotions_labels.loc[data['Лицо']['Эмоция']]['Unicode']
+            label = data['Лицо']['Эмоция'][1]
             if issubclass(type(label), str):
                 painter = QPainter(image)
                 painter.setFont(self.emoji_font)

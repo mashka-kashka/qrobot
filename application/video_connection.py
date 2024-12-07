@@ -18,7 +18,8 @@ class QRobotVideoConnection(QThread):
     tcp_server = None
     tcp_client = None
     connection = None
-    min_delta = None
+    drop = 2
+    frame = 0
 
     def __init__(self, logger, host, port, is_server):
         super().__init__()
@@ -168,15 +169,9 @@ class QRobotVideoConnection(QThread):
                     if self.bytes_expected == 0:
                         connection.flush()
                         _frame = pickle.loads(self.buffer)
-                        cur_time = time.time_ns()
-                        delta = cur_time - self.send_time
-                        if self.min_delta is None:
-                            self.min_delta = self.send_time
-
-                        #print(f"send:{self.send_time} cur:{cur_time} delta: {cur_time - self.send_time} min: {self.min_delta}")
-
-                        #if delta < 100000:
-                        self.frame_received_signal.emit(_frame)
+                        self.frame += 1
+                        if self.frame % self.drop > 0: # Отбрасываем часть кадров, чтобы успеть обработать
+                            self.frame_received_signal.emit(_frame)
         except Exception as e:
             self.bytes_expected = 0
             connection.flush()

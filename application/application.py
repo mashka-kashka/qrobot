@@ -10,6 +10,7 @@ from robot import QRobot
 import platform
 import socket
 import toml
+import time
 import sys
 
 
@@ -23,6 +24,10 @@ class QRobotApplication(QApplication):
 
     def __init__(self, argv):
         super().__init__(argv)
+        self.sent_frames = []
+        self.received_frames = []
+        self.fsps = 0
+        self.frps = 0
 
     def start(self, window):
         # Главное окно
@@ -43,9 +48,6 @@ class QRobotApplication(QApplication):
         self.camera.frame_captured_signal.connect(self.on_frame_captured)
         self.get_frame_signal.connect(self.camera.get_frame)
         self.camera_thread.started.connect(self.camera.start)
-        is_on_raspberry = platform.uname().node == "raspberrypi"
-        if is_on_raspberry:
-            self.camera_thread.start()
 
         # Сервер
         self.server = QRobotServer(self.window)
@@ -61,24 +63,28 @@ class QRobotApplication(QApplication):
         self.window.stop_client_signal.connect(self.stop_client)
         self.window.reset_client_signal.connect(self.reset_client)
 
-        server_exists = True
-        with open('config.toml', 'r') as f:
-            self.config = toml.load(f)
-            _video_port = int(self.config["network"]["video_port"])
-            _host = self.config["network"]["host"]
-
-            # Есть ли в сети сервер?
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_exists = sock.connect_ex((_host, _video_port)) == 0
-            sock.close()
-
-        if server_exists:
-            if not is_on_raspberry:
-                self.camera_thread.start()
-
-            self.window.activate_robot(False)
+        is_on_raspberry = platform.uname().node == "raspberrypi"
+        if is_on_raspberry:
+            self.camera_thread.start()
         else:
-            self.window.activate_computer(False)
+            server_exists = False
+            with open('config.toml', 'r') as f:
+                self.config = toml.load(f)
+                _video_port = int(self.config["network"]["video_port"])
+                _host = self.config["network"]["host"]
+
+                # Есть ли в сети сервер?
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_exists = sock.connect_ex((_host, _video_port)) == 0
+                sock.close()
+
+            if server_exists:
+                if not is_on_raspberry:
+                    self.camera_thread.start()
+
+                self.window.activate_robot(False)
+            else:
+                self.window.activate_computer(False)
 
     def stop(self):
         self.stop_camera()
@@ -121,6 +127,12 @@ class QRobotApplication(QApplication):
     @pyqtSlot(object)
     def on_frame_captured(self, frame):
         if self.connection: # Есть подключение
+            self.sent_frames.append(time.time_ns())
+            if len(self.sent_frames) > 10:
+                self.sent_frames.pop(0)
+            if len(self.sent_frames) == 10:
+                self.fsps = (self.sent_frames[-1] - self.sent_frames[0]) #// 10000000
+                #print(f"Количество отправляемых кадров в секунду: {self.fsps}")
             self.send_frame_signal.emit(frame)
             #self.log_signal.emit(f"Отправлен кадр на обработку", LogMessageType.WARNING)
         else: # Самостоятельный расчёт
@@ -151,6 +163,14 @@ class QRobotApplication(QApplication):
         else: # Мы на клиенте
             # Отображение полученного кадра
             self.show_frame_signal.emit(frame)
+
+            self.received_frames.append(time.time_ns())
+            if len(self.received_frames) > 10:
+                self.received_frames.pop(0)
+            if len(self.received_frames) == 10:
+                self.frps = (self.received_frames[-1] - self.received_frames[0]) #// 10000000
+                #print(f"Количество получаемых кадров в секунду: {self.frps} {self.fsps // self.frps}")
+
         self.processEvents()
 
     @pyqtSlot(object)
@@ -208,8 +228,8 @@ class QRobotApplication(QApplication):
     @pyqtSlot(object)
     def on_data_received(self, data):
         # Получены данные по сети
-        if not self.connection.is_server: # Мы на стороне робота
-            print(data)
+        #if not self.connection.is_server: # Мы на стороне робота
+        #    print(data)
         self.processEvents()
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 import cv2
 import platform
 import toml
+import time
 
 
 class Camera(QObject):
