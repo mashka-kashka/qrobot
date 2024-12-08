@@ -7,6 +7,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
 from net_config_dialog import NetConfigDialog
+import serial
 import toml
 
 
@@ -36,34 +37,53 @@ class QRobotMainWindow(QMainWindow):
             self.config = toml.load(f)
 
             servos = self.config["servos"]
-            channels = servos["channels"]
-            descriptions = servos["descriptions"]
-            positions = servos["positions"]
-            mins = servos["mins"]
-            maxs = servos["maxs"]
+
+            self.controller = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
 
             layout = self.ui.gl_servos
-            for row, description in enumerate(descriptions):
-                label = QLabel(description)
-                layout.addWidget(label, row, 0)
+            for id, channel in enumerate(servos):
+                servo = servos[channel]
+                label = QLabel(servo["name"])
+                layout.addWidget(label, id, 0)
                 slider = QSlider(QtCore.Qt.Orientation.Horizontal)
-                slider.setSliderPosition(positions[row])
-                slider.setMinimum(mins[row])
-                slider.setMaximum(maxs[row])
+                slider.setMinimum(servo["min"])
+                slider.setMaximum(servo["max"])
+                slider.setValue(servo["value"])
                 slider.valueChanged.connect(self.on_slider_value_changed)
-                slider.setProperty("id", row)
-                slider.setProperty("channel", channels[row])
-                layout.addWidget(slider, row, 1)
+                slider.setProperty("id", id)
+                slider.setProperty("channel", channel)
+                slider.setProperty("min", servo["min"])
+                slider.setProperty("max", servo["max"])
+                slider.setProperty("reverse", servo["reverse"] if "reverse" in servo else False)
+                layout.addWidget(slider, id, 1)
 
         app = QtWidgets.QApplication.instance()
         app.show_frame_signal.connect(self.show_frame)
 
+    def write_instruction(self, instruction):
+        if self.controller:
+            self.controller.write(instruction.encode("utf-8"))
+            # while True:
+            #     str = self.controller.readall().decode("utf-8")
+            #     if (str == "OK"):
+            #         break
+            print(f"Успешное выполнение инструкции: {instruction}")
+
     @pyqtSlot()
     def on_slider_value_changed(self):
         slider = self.sender()
-        id = slider.property("id")
-        #print(f"Сервопривод: {id} Значение: {slider.value()}")
-        pass
+        channel = slider.property("channel")
+        min_val = slider.property("min")
+        max_val = slider.property("max")
+        reverse = slider.property("reverse")
+        value = slider.value()
+        if reverse:
+            value = max_val - value + min_val
+        #print(f"Сервопривод: {channel} Значение: {slider.value()}")
+        try:
+             self.write_instruction(f"#{channel}P{value}T100D100\r\n")
+        except Exception as e:
+             print("Ошибка контроллера управления сервоприводами：", e)
 
     @pyqtSlot(object)
     def show_frame(self, frame):

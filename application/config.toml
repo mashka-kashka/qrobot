@@ -15,9 +15,127 @@ gestures_labels = "../models/жесты.csv"
 emotions_model = "../models/emotions2.mdl"
 emotions_labels = "../models/эмоции.csv"
 
-[servos]
-channels = [ 1, 2, 3, 4,]
-positions = [ 0, 0, 0, 0,]
-mins = [ 0, 0, 0, 0,]
-maxs = [ 0, 0, 0, 0,]
-descriptions = [ "Подъём головы", "Поворот шеи", "Подъём левого плеча", "Подъём правого плеча",]
+
+controller = ""
+channels = [16, 17, 15, 18, 1]
+positions = [ 1500, 1500, 1500, 1500, 1500]
+mins = [ 500, 500, 500, 500, 500]
+maxs = [ 2500, 2500, 2500, 2500, 2500]
+descriptions = [ "Подъём головы", "Поворот шеи", "Подъём левого плеча", "Подъём правого плеча","Тест"]
+
+[servos.1]
+min = 500
+max = 2500
+value = 1500
+name = "Тест"
+
+[servos.16]
+min = 1400
+max = 2200
+value = 1500
+reverse = true
+name = "Подъём головы"
+
+[servos.17]
+min = 1000
+max = 2100
+value = 1550
+reverse = true
+name = "Поворот шеи"
+
+[servos.18]
+min = 500
+max = 2500
+value = 1500
+name = "Поворот правого плеча"
+
+[servos.19]
+min = 1500
+max = 2400
+value = 1500
+name = "Подъём правого плеча"
+
+[servos.20]
+min = 1500
+max = 2400
+value = 1500
+name = "Сгибание правого локтя"
+
+[servos.21]
+min = 1200
+max = 1500
+value = 1200
+reverse = true
+name = "Сгибание правого мизинца"
+
+[servos.23]
+min = 1200
+max = 1500
+value = 1200
+reverse = true
+name = "Сгибание правого безымянного пальца"
+
+[servos.22]
+min = 1300
+max = 1750
+value = 1300
+name = "Сгибание правого среднего пальца"
+
+[servos.24]
+min = 1400
+max = 1800
+value = 1400
+name = "Сгибание правого указательного пальца"
+
+[servos.15]
+min = 500
+max = 2500
+value = 1500
+name = "Поворот левого плеча"
+
+[servos.14]
+min = 500
+max = 1400
+value = 500
+reverse = true
+name = "Подъём левого плеча"
+
+[servos.13]
+min = 500
+max = 1400
+value = 500
+reverse = true
+name = "Сгибание левого локтя"
+
+[servos.11]
+min = 1200
+max = 1700
+value = 1200
+name = "Сгибание левого мизинца"
+
+[servos.12]
+min = 1300
+max = 1700
+value = 1300
+name = "Сгибание левого безымянного пальца"
+
+[servos.10]
+min = 1300
+max = 1700
+value = 1300
+reverse = true
+name = "Сгибание левого среднего пальца"
+
+[servos.9]
+min = 1100
+max = 1650
+value = 1100
+reverse = true
+name = "Сгибание левого указательного пальца"
+
+[servos.8]
+min = 1100
+max = 1500
+value = 1100
+reverse = true
+name = "Сгибание левого большого пальца"

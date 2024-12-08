@@ -65,6 +65,7 @@ PyQt6-Qt6==6.4.3
 pyqt6-tools==6.4.2.3.3
 PyQt6_sip==13.8.0
 pyqtgraph==0.13.7
+pyserial==3.5
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.2
@@ -91,3 +92,5 @@ tzdata==2024.2
 urllib3==2.2.3
 Werkzeug==3.0.4
 wrapt==1.16.0
+
+pyserial==3.5
