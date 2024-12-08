@@ -23,13 +23,16 @@ class Camera(QObject):
     def start(self):
         self.running = True
         if platform.uname().node == "raspberrypi":
-            from picamera2 import Picamera2
-            self.picam2 = Picamera2()
-            self.picam2.configure(self.picam2.create_preview_configuration(
-                main={"format": 'RGB888', "size": (self.config["camera"]["width"], self.config["camera"]["height"])}))
-            self.picam2.start() # запускаем камеру
-            self.activate_robot_signal.emit(False)
-            self.get_frame()
+            try:
+                from picamera2 import Picamera2
+                self.picam2 = Picamera2()
+                self.picam2.configure(self.picam2.create_preview_configuration(
+                    main={"format": 'RGB888', "size": (self.config["camera"]["width"], self.config["camera"]["height"])}))
+                self.picam2.start() # запускаем камеру
+                self.activate_robot_signal.emit(False)
+                self.get_frame()
+            except:
+                pass
         else:
             self.cap = cv2.VideoCapture(self.camera_index)
             if self.cap.isOpened():

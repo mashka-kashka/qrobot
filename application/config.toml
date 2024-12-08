@@ -23,12 +23,6 @@ mins = [ 500, 500, 500, 500, 500]
 maxs = [ 2500, 2500, 2500, 2500, 2500]
 descriptions = [ "Подъём головы", "Поворот шеи", "Подъём левого плеча", "Подъём правого плеча","Тест"]
 
-[servos.1]
-min = 500
-max = 2500
-value = 1500
-name = "Тест"
-
 [servos.16]
 min = 1400
 max = 2200
@@ -87,6 +81,46 @@ max = 1800
 value = 1400
 name = "Сгибание правого указательного пальца"
 
+[servos.25]
+min = 1100
+max = 1800
+value = 1100
+name = "Сгибание правого большого пальца"
+
+[servos.26]
+min = 800
+max = 1500
+value = 800
+reverse = true
+name = "Отведение правой ноги"
+
+[servos.27]
+min = 600
+max = 2400
+value = 600
+reverse = true
+name = "Подъём правой ноги"
+
+[servos.28]
+min = 1500
+max = 2400
+value = 1500
+name = "Сгибание правого колена"
+
+[servos.29]
+min = 1200
+max = 2500
+value = 1200
+reverse = true
+name = "Сгибание правой ступни"
+
+[servos.30]
+min = 1000
+max = 2000
+value = 1500
+reverse = true
+name = "Наклон правой ступни"
+
 [servos.15]
 min = 500
 max = 2500
@@ -139,3 +173,36 @@ max = 1500
 value = 1100
 reverse = true
 name = "Сгибание левого большого пальца"
+
+[servos.7]
+min = 1500
+max = 2500
+value = 1500
+name = "Отведение левой ноги"
+
+[servos.6]
+min = 600
+max = 2400
+value = 1500
+name = "Подъём левой ноги"
+
+[servos.5]
+min = 400
+max = 1500
+value = 1500
+reverse = true
+name = "Сгибание левого колена"
+
+[servos.4]
+min = 1000
+max = 1500
+value = 1500
+reverse = true
+name = "Сгибание левой ступни"
+
+[servos.3]
+min = 1000
+max = 2000
+value = 1500
+reverse = true
+name = "Наклон левой ступни"
