@@ -38,7 +38,10 @@ class QRobotMainWindow(QMainWindow):
 
             servos = self.config["servos"]
 
-            self.controller = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
+            try:
+                self.controller = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
+            except:
+                pass
 
             layout = self.ui.gl_servos
             for id, channel in enumerate(servos):

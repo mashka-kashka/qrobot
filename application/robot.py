@@ -37,6 +37,11 @@ class QRobot(QObject):
                       'MIDDLE_FINGER_DIP',
                       'MIDDLE_FINGER_TIP', 'RING_FINGER_MCP', 'RING_FINGER_PIP', 'RING_FINGER_DIP', 'RING_FINGER_TIP',
                       'PINKY_MCP', 'PINKY_PIP', 'PINKY_DIP', 'PINKY_TIP']
+    HAND_TIPS =      [('THUMB_TIP','THUMB_MCP'),
+                      ('INDEX_FINGER_TIP', 'INDEX_FINGER_MCP'),
+                      ('MIDDLE_FINGER_TIP', 'MIDDLE_FINGER_MCP'),
+                      ('RING_FINGER_TIP', 'RING_FINGER_MCP'),
+                      ('PINKY_TIP', 'PINKY_MCP')]
     POSE_LANDMARKS = ['LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW', 'LEFT_HIP', 'RIGHT_HIP',
                        'LEFT_KNEE', 'RIGHT_KNEE', 'LEFT_ANKLE', 'RIGHT_ANKLE', 'LEFT_HEEL', 'RIGHT_HEEL',
                        'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX']
@@ -166,7 +171,7 @@ class QRobot(QObject):
             if not emotion is None:
                 data['Лицо']['Эмоция'] = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
 
-            # Распознавание рук и поз
+        # Распознавание рук и поз
         hand_detection_results = self.hand_detector.process(image)
         hand_landmarks_list = hand_detection_results.multi_hand_landmarks
         if hand_landmarks_list:
@@ -204,6 +209,9 @@ class QRobot(QObject):
                                                                            'point': (int(pt.x * width),
                                                                                      int(pt.y * height))}
 
+        # Расчеты по скелету
+        self.calc_sceleton(sceleton)
+
         data['Скелет'] = sceleton
 #        with open("sceleton.json", "w") as outfile:
 #            json.dump(data, outfile)
@@ -213,6 +221,37 @@ class QRobot(QObject):
         annotated_image = self.draw_gestures_on_image(annotated_image, data)
 
         return annotated_image, data
+
+    def calc_sceleton(self, sceleton):
+
+        for prefix in ['LEFT_', 'RIGHT_']:
+            wrist = sceleton.get(prefix + 'WRIST')
+            if wrist == None:
+                continue
+
+            vwrist = np.array([[wrist['x'], wrist['y'], wrist['z']]])
+            for tip_idx, mcp_idx in self.HAND_TIPS:
+                tip_name = prefix + tip_idx
+                mcp_name = prefix + mcp_idx
+
+                # Расчёт расстояния от кончика пальца до основания ладони
+                tip = sceleton.get(tip_name)
+                if tip == None:
+                    continue
+                vtip = np.array([[tip['x'], tip['y'], tip['z']]])
+                v = vtip - vwrist
+                tip_dist = np.linalg.norm(v)
+
+                # Расчёт расстояния от основания пальца до основания ладони
+                mcp = sceleton.get(mcp_name)
+                if mcp == None:
+                    continue
+                vmcp = np.array([[mcp['x'], mcp['y'], mcp['z']]])
+                v = vmcp - vwrist
+                mcp_dist = np.linalg.norm(v)
+
+                # Если больше 1, то палец - разогнут, иначе - согнут.
+                tip['wdistance'] = tip_dist / mcp_dist
 
     def detect_gesture(self, landmarks, ranges, score):
         if not self.emotions_model:
