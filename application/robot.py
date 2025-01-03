@@ -224,9 +224,10 @@ class QRobot(QObject):
 
     def calc_sceleton(self, sceleton):
 
+        # Расчёт положений пальцев для управлениями сервоприводами
         for prefix in ['LEFT_', 'RIGHT_']:
             wrist = sceleton.get(prefix + 'WRIST')
-            if wrist == None:
+            if wrist is None:
                 continue
 
             vwrist = np.array([[wrist['x'], wrist['y'], wrist['z']]])
@@ -236,7 +237,7 @@ class QRobot(QObject):
 
                 # Расчёт расстояния от кончика пальца до основания ладони
                 tip = sceleton.get(tip_name)
-                if tip == None:
+                if tip is None:
                     continue
                 vtip = np.array([[tip['x'], tip['y'], tip['z']]])
                 v = vtip - vwrist
@@ -244,7 +245,7 @@ class QRobot(QObject):
 
                 # Расчёт расстояния от основания пальца до основания ладони
                 mcp = sceleton.get(mcp_name)
-                if mcp == None:
+                if mcp is None:
                     continue
                 vmcp = np.array([[mcp['x'], mcp['y'], mcp['z']]])
                 v = vmcp - vwrist
@@ -252,6 +253,75 @@ class QRobot(QObject):
 
                 # Если больше 1, то палец - разогнут, иначе - согнут.
                 tip['wdistance'] = tip_dist / mcp_dist
+
+        # Расчёты углов
+        ls = sceleton.get('LEFT_SHOULDER')
+        lh = sceleton.get('LEFT_HIP')
+        le = sceleton.get('LEFT_ELBOW')
+        rs = sceleton.get('RIGHT_SHOULDER')
+        rh = sceleton.get('RIGHT_HIP')
+        re = sceleton.get('RIGHT_ELBOW')
+
+        while (ls is not None) and (rs is not None): # На кадре видно и левое, и правое плечо
+            vls = np.array([[ls['x'], ls['y'], ls['z']]])
+            vrs = np.array([[rs['x'], rs['y'], rs['z']]])
+            vlrs = self.normalize(vrs - vls) # Нормализованный вектор, направленный от левого плеча к правому
+            vrls = vlrs * -1  # Нормализованный вектор, направленный от правого плеча к левому
+
+            if rh is not None: # Видно правое бедро
+                vrsh = np.array([[rh['x'], rh['y'], rh['z']]]) - vrs # Вектор, направленный от правого плеча к бедру
+                vc = self.normalize(np.cross(vlrs, vrsh)) # Нормаль к плоскости торса
+                vspine = self.normalize(np.cross(vlrs,vc)).reshape(3, 1) # Вектор по направлению позвоночника
+                vc = vc.reshape(3, 1)
+            elif lh is not None: # Видно левое бедро
+                vlsh = np.array([[lh['x'], lh['y'], lh['z']]]) - vls # Вектор, направленный от левого плеча к бедру
+                vc = self.normalize(np.cross(vlsh, vlrs)).reshape(3, 1)  # Нормаль к плоскости торса
+            else:
+                break
+
+            vlrs = vlrs.reshape(3, 1) # Преобразование в вектор-столбец
+            vrls = vrls.reshape(3, 1) # Преобразование в вектор-столбец
+
+            if le is not None: # Видно левый локоть
+                # Нормализованный вектор, направленный от правого плеча к локтю
+                vlse = self.normalize(np.array([[le['x'], le['y'], le['z']]]) - vls)
+                plsec = np.dot(vlse, vc) # Произведение на нормаль к торсу
+                vlsec = np.dot(vlse, vc) * vc  # Проекция на нормаль к торсу
+                vlv = vlse - vlsec.reshape(1, 3)
+                plsess = np.dot(vlv, vrls)  # Произведение на вектор между плечами
+                direction = 'вверх' if np.dot(vlv, vspine) > 0 else 'вниз'  # Направление
+
+                #alsec = np.rad2deg(np.arccos(np.clip(plsec, -1.0, 1.0)))
+
+                #plsess = np.dot(vlse, vrls) # Произведение на вектор между плечами
+                alsess = np.rad2deg(np.arccos(plsess))
+                #print(f'Левый угол с плечами: {alsess} {direction}')
+
+            if re is not None: # Видно правый локоть
+                # Нормализованный вектор, направленный от правого плеча к локтю
+                vrse = self.normalize(np.array([[re['x'], re['y'], re['z']]]) - vrs)
+                prsec = np.dot(vrse, vc) # Произведение на нормаль к торсу
+                vrsec = np.dot(vrse, vc) * vc  # Проекция на нормаль к торсу
+                vrv = vrse - vrsec.reshape(1, 3)
+                prsess = np.dot(vrv, vlrs)  # Произведение на вектор между плечами
+                direction = 'вверх' if np.dot(vrv, vspine) > 0 else 'вниз'  # Направление
+
+                arsess = np.rad2deg(np.arccos(prsess))
+                print(f'Правый угол с плечами: {arsess} {direction}')
+
+            #   arsec = np.rad2deg(np.arccos(np.clip(prsec, -1.0, 1.0)))
+             #   prsess = np.dot(vrse, vlrs) # Произведение на вектор между плечами
+             #   arsess = np.rad2deg(np.arccos(np.clip(prsess, -1.0, 1.0)))
+
+                #print(f'Правый угол с торсом: {arsess} Правый угол с плечами: {arsec}')
+
+            break
+
+    def normalize(self, v):
+        norm = np.linalg.norm(v)
+        if norm == 0:
+            return v
+        return v / norm
 
     def detect_gesture(self, landmarks, ranges, score):
         if not self.emotions_model:
