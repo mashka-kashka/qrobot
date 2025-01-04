@@ -258,62 +258,80 @@ class QRobot(QObject):
         ls = sceleton.get('LEFT_SHOULDER')
         lh = sceleton.get('LEFT_HIP')
         le = sceleton.get('LEFT_ELBOW')
+        lw = sceleton.get('LEFT_WRIST')
         rs = sceleton.get('RIGHT_SHOULDER')
         rh = sceleton.get('RIGHT_HIP')
         re = sceleton.get('RIGHT_ELBOW')
+        rw = sceleton.get('RIGHT_WRIST')
 
         while (ls is not None) and (rs is not None): # На кадре видно и левое, и правое плечо
-            vls = np.array([[ls['x'], ls['y'], ls['z']]])
-            vrs = np.array([[rs['x'], rs['y'], rs['z']]])
+            vls = np.array([[ls['x'], ls['y'], ls['z']]]) # Левое плечо
+            vrs = np.array([[rs['x'], rs['y'], rs['z']]]) # Правое плечо
             vlrs = self.normalize(vrs - vls) # Нормализованный вектор, направленный от левого плеча к правому
             vrls = vlrs * -1  # Нормализованный вектор, направленный от правого плеча к левому
 
             if rh is not None: # Видно правое бедро
                 vrsh = np.array([[rh['x'], rh['y'], rh['z']]]) - vrs # Вектор, направленный от правого плеча к бедру
                 vc = self.normalize(np.cross(vlrs, vrsh)) # Нормаль к плоскости торса
-                vspine = self.normalize(np.cross(vlrs,vc)).reshape(3, 1) # Вектор по направлению позвоночника
-                vc = vc.reshape(3, 1)
+                vspine = self.normalize(np.cross(vlrs,vc)) # Вектор по направлению позвоночника
             elif lh is not None: # Видно левое бедро
                 vlsh = np.array([[lh['x'], lh['y'], lh['z']]]) - vls # Вектор, направленный от левого плеча к бедру
-                vc = self.normalize(np.cross(vlsh, vlrs)).reshape(3, 1)  # Нормаль к плоскости торса
+                vc = self.normalize(np.cross(vlsh, vlrs))  # Нормаль к плоскости торса
             else:
                 break
 
-            vlrs = vlrs.reshape(3, 1) # Преобразование в вектор-столбец
-            vrls = vrls.reshape(3, 1) # Преобразование в вектор-столбец
-
             if le is not None: # Видно левый локоть
-                # Нормализованный вектор, направленный от правого плеча к локтю
-                vlse = self.normalize(np.array([[le['x'], le['y'], le['z']]]) - vls)
-                plsec = np.dot(vlse, vc) # Произведение на нормаль к торсу
-                vlsec = np.dot(vlse, vc) * vc  # Проекция на нормаль к торсу
-                vlv = vlse - vlsec.reshape(1, 3)
-                plsess = np.dot(vlv, vrls)  # Произведение на вектор между плечами
-                direction = 'вверх' if np.dot(vlv, vspine) > 0 else 'вниз'  # Направление
-
-                #alsec = np.rad2deg(np.arccos(np.clip(plsec, -1.0, 1.0)))
-
-                #plsess = np.dot(vlse, vrls) # Произведение на вектор между плечами
+                vle = np.array([[le['x'], le['y'], le['z']]]) # Левый локоть
+                vlse = self.normalize(vle - vls) # Нормализованный вектор, направленный от левого плеча к локтю
+                vlsec = np.dot(vlse, vc.reshape(3,1)) * vc  # Проекция на переднюю плоскость туловища
+                vlv = self.normalize(vlse - vlsec)
+                plsess = np.dot(vlv, vrls.reshape(3,1))  # Произведение на вектор между плечами
+                lsess_direction = 'вверх' if np.dot(vlv, vspine.reshape(3,1)) > 0 else 'вниз'  # Направление
                 alsess = np.rad2deg(np.arccos(plsess))
-                #print(f'Левый угол с плечами: {alsess} {direction}')
+
+                vlselrs = np.dot(vlse, vlrs.reshape(3,1)) * vlrs  # Проекция на боковую плоскость туловища
+                vlc = self.normalize(vlse - vlselrs)
+                plc = np.dot(vlc, vc.reshape(3,1))  # Произведение на нормаль к торсу
+                lc_direction = 'вверх' if np.dot(vlc, vspine.reshape(3,1)) > 0 else 'вниз'  # Направление
+                alс = np.rad2deg(np.arccos(plc))
+                #print(f'Левый угол с торсом: {alс} {lc_direction}')
+
+                if lw is not None:  # Видно левую ладонь
+                    vls = np.array([[ls['x'], ls['y'], 0]])  # Левое плечо
+                    vle = np.array([[le['x'], le['y'], 0]])  # Левый локоть
+                    vlse = self.normalize(vle - vls)  # Нормализованный вектор, направленный от левого плеча к локтю
+                    vlw = np.array([[lw['x'], lw['y'], 0]])  # Левая ладонь
+                    vlwe = self.normalize(vlw - vle)  # Нормализованный вектор, направленный от левой ладони к локтю
+                    plwe = np.dot(vlse, vlwe.reshape(3, 1))
+                    alwe = np.rad2deg(np.arccos(plwe))
+                    print(f'Левый угол в локте: {alwe}')
 
             if re is not None: # Видно правый локоть
-                # Нормализованный вектор, направленный от правого плеча к локтю
-                vrse = self.normalize(np.array([[re['x'], re['y'], re['z']]]) - vrs)
-                prsec = np.dot(vrse, vc) # Произведение на нормаль к торсу
-                vrsec = np.dot(vrse, vc) * vc  # Проекция на нормаль к торсу
-                vrv = vrse - vrsec.reshape(1, 3)
-                prsess = np.dot(vrv, vlrs)  # Произведение на вектор между плечами
-                direction = 'вверх' if np.dot(vrv, vspine) > 0 else 'вниз'  # Направление
-
+                vre = np.array([[re['x'], re['y'], re['z']]])  # Правый локоть
+                vrse = self.normalize(vre - vrs) # Нормализованный вектор, направленный от правого плеча к локтю
+                vrsec = np.dot(vrse, vc.reshape(3,1)) * vc  # Проекция на переднюю плоскость туловища
+                vrv = self.normalize(vrse - vrsec)
+                prsess = np.dot(vrv, vlrs.reshape(3,1))  # Произведение на вектор между плечами
+                rsess_direction = 'вверх' if np.dot(vrv, vspine.reshape(3,1)) > 0 else 'вниз'  # Направление
                 arsess = np.rad2deg(np.arccos(prsess))
-                print(f'Правый угол с плечами: {arsess} {direction}')
 
-            #   arsec = np.rad2deg(np.arccos(np.clip(prsec, -1.0, 1.0)))
-             #   prsess = np.dot(vrse, vlrs) # Произведение на вектор между плечами
-             #   arsess = np.rad2deg(np.arccos(np.clip(prsess, -1.0, 1.0)))
+                vrserss = np.dot(vrse, vrls.reshape(3,1)) * vrls  # Проекция на боковую плоскость туловища
+                vrc = self.normalize(vrse - vrserss)
+                prc = np.dot(vrc, vc.reshape(3,1))  # Произведение на нормаль к торсу
+                rc_direction = 'вверх' if np.dot(vrc, vspine.reshape(3,1)) > 0 else 'вниз'  # Направление
+                arseс = np.rad2deg(np.arccos(prc))
 
-                #print(f'Правый угол с торсом: {arsess} Правый угол с плечами: {arsec}')
+                #print(f'Правый угол с торсом: {arseс} {rc_direction} Правый угол с плечами: {arsess} {rsess_direction}')
+
+                if rw is not None:  # Видно правую ладонь
+                    vrs = np.array([[rs['x'], rs['y'], 0]])  # Правое плечо
+                    vre = np.array([[re['x'], re['y'], 0]])  # Правый локоть
+                    vrse = self.normalize(vre - vrs)  # Нормализованный вектор, направленный от правого плеча к локтю
+                    vrw = np.array([[rw['x'], rw['y'], 0]])  # Правая ладонь
+                    vrwe = self.normalize(vrw - vre)  # Нормализованный вектор, направленный от правого ладони к локтю
+                    prwe = np.dot(vrse, vrwe.reshape(3, 1))
+                    arwe = np.rad2deg(np.arccos(prwe))
+                    print(f'Правый угол в локте: {arwe}')
 
             break
 
