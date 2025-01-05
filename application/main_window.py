@@ -1,13 +1,14 @@
 from time import localtime, strftime
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage
-from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider
+from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QPushButton
 from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
+from torchgen.api.types import layoutT
 
+from servo_controller import QServoController
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
 from net_config_dialog import NetConfigDialog
-import serial
 import toml
 
 
@@ -33,60 +34,55 @@ class QRobotMainWindow(QMainWindow):
         self.ui.gv_camera.setScene(self.scene)
         self.scenePixmapItem = None
 
-        with open('config.toml', 'r') as f:
-            self.config = toml.load(f)
+        layout = self.ui.gl_servos
+        btn_reset = QPushButton("Сброс")
+        btn_reset.clicked.connect(self.on_reset_servos)
+        layout.addWidget(btn_reset, 0, 0)
 
-            servos = self.config["servos"]
-
-            try:
-                self.controller = serial.Serial('/dev/ttyACM0', 115200, timeout=0.1)
-            except:
-                pass
-
-            layout = self.ui.gl_servos
-            for id, channel in enumerate(servos):
-                servo = servos[channel]
-                label = QLabel(servo["name"])
-                layout.addWidget(label, id, 0)
-                slider = QSlider(QtCore.Qt.Orientation.Horizontal)
-                slider.setMinimum(servo["min"])
-                slider.setMaximum(servo["max"])
-                slider.setValue(servo["value"])
-                slider.valueChanged.connect(self.on_slider_value_changed)
-                slider.setProperty("id", id)
-                slider.setProperty("channel", channel)
-                slider.setProperty("min", servo["min"])
-                slider.setProperty("max", servo["max"])
-                slider.setProperty("reverse", servo["reverse"] if "reverse" in servo else False)
-                layout.addWidget(slider, id, 1)
+        self.sliders = []
+        self.controller = app.controller
+        for id in range(self.controller.get_servos_count()):
+            channel, name, begin, end, neutral = self.controller.get_servo_info(id)
+            label = QLabel(name)
+            layout.addWidget(label, id + 1, 0)
+            slider = QSlider(QtCore.Qt.Orientation.Horizontal)
+            reverse = begin > end
+            slider.setProperty("reverse", reverse)
+            slider.setMinimum(end if reverse else begin)
+            slider.setMaximum(begin if reverse else end)
+            slider.setValue(neutral)
+            slider.valueChanged.connect(self.on_slider_value_changed)
+            slider.setProperty("id", id + 1)
+            slider.setProperty("channel", channel)
+            slider.setProperty("begin", begin)
+            slider.setProperty("end", end)
+            slider.setProperty("neutral", neutral)
+            layout.addWidget(slider, id + 1, 1)
+            self.sliders.append(slider)
 
         app = QtWidgets.QApplication.instance()
         app.show_frame_signal.connect(self.show_frame)
 
-    def write_instruction(self, instruction):
-        if self.controller:
-            self.controller.write(instruction.encode("utf-8"))
-            # while True:
-            #     str = self.controller.readall().decode("utf-8")
-            #     if (str == "OK"):
-            #         break
-            print(f"Успешное выполнение инструкции: {instruction}")
+    @pyqtSlot()
+    def on_reset_servos(self):
+        for slider in self.sliders:
+            neutral_val = slider.property("neutral")
+            slider.setValue(neutral_val)
 
     @pyqtSlot()
     def on_slider_value_changed(self):
         slider = self.sender()
         channel = slider.property("channel")
-        min_val = slider.property("min")
-        max_val = slider.property("max")
+        begin_val = slider.property("begin")
+        end_val = slider.property("end")
         reverse = slider.property("reverse")
         value = slider.value()
         if reverse:
-            value = max_val - value + min_val
-        #print(f"Сервопривод: {channel} Значение: {slider.value()}")
-        try:
-             self.write_instruction(f"#{channel}P{value}T100D100\r\n")
-        except Exception as e:
-             print("Ошибка контроллера управления сервоприводами：", e)
+            value = begin_val - value + end_val
+
+        self.controller.set_servo_position(channel, value, True)
+
+        #print(f"Сервопривод: {channel} Значение: {value}")
 
     @pyqtSlot(object)
     def show_frame(self, frame):

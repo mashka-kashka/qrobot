@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QSlider
+from servo_controller import QServoController
 from log_message_type import LogMessageType
 from main_window import QRobotMainWindow
 from server import QRobotServer
@@ -8,8 +9,6 @@ from client import QRobotClient
 from camera import Camera
 from robot import QRobot
 import platform
-import socket
-import toml
 import time
 import sys
 
@@ -26,6 +25,7 @@ class QRobotApplication(QApplication):
         super().__init__(argv)
         self.sent_frames = []
         self.received_frames = []
+        self.controller = QServoController()
 
     def start(self, window):
         # Главное окно
@@ -34,7 +34,7 @@ class QRobotApplication(QApplication):
         self.log_signal.emit(f"Начало работы на {platform.uname().system}", LogMessageType.STATUS)
 
         # Робот
-        self.robot = QRobot()
+        self.robot = QRobot(self.controller)
         self.frame_buffer = []
 
         # Камера
