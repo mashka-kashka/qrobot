@@ -10,11 +10,9 @@ data_port = "2024"
 host = "192.168.1.11"
 
 [models]
-#gestures_model = "../models/gestures2.mdl"
 gestures_model = "../models/камень_ножницы_бумага.mdl"
 gestures_labels = "../models/жесты.csv"
-#emotions_model = "../models/emotions2.mdl"
-emotions_model = "../models/3эмоции.mdl"
+emotions_model = "../models/emotions3.mdl"
 emotions_labels = "../models/эмоции.csv"
 
 [controller]
