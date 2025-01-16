@@ -16,6 +16,7 @@ import pandas as pd
 import pickle
 import torch
 import os
+import random
 
 
 class QRobot(QObject):
@@ -235,13 +236,22 @@ class QRobot(QObject):
                 self.controller.set_servo_position(18, 1500)
                 self.controller.set_servo_position(20, 0)
             else:
-                #print(f"Правый жест {right_gesture} {left_gesture}")
-                if left_gesture == 1: # Бумага
-                    self.show_scissors()
-                elif left_gesture == 7:  # Ножницы
-                    self.show_rock()
-                elif left_gesture == 26:  # Камень
-                    self.show_paper()
+                if emotion == 12: # 🙁,Слегка нахмуренное лицо
+                    if left_gesture == 1:  # Бумага
+                        self.show_rock()
+                    elif left_gesture == 7:  # Ножницы
+                        self.show_paper()
+                    elif left_gesture == 26:  # Камень
+                        self.show_scissors()
+                else:
+                    random_num = random.randint(0, 3)
+
+                    if random_num == 0:  # Бумага
+                        self.show_rock()
+                    elif random_num == 1:  # Ножницы
+                        self.show_paper()
+                    elif random_num == 2:  # Камень
+                        self.show_scissors()
         else:
             if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
                 print(f"Переключение в режим игры")
