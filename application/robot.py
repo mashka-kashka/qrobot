@@ -91,12 +91,12 @@ class QRobot(QObject):
             max_num_hands=2)
 
         # Модуль распознавания поз на изображении
-        base_options = python.BaseOptions(model_asset_path='../models/pose_landmarker_full.task')
-        options = vision.PoseLandmarkerOptions(
-            base_options=base_options,
-            output_segmentation_masks=True,
-            num_poses=1)
-        self.pose_detector = vision.PoseLandmarker.create_from_options(options)
+        # base_options = python.BaseOptions(model_asset_path='../models/pose_landmarker_full.task')
+        # options = vision.PoseLandmarkerOptions(
+        #     base_options=base_options,
+        #     output_segmentation_masks=True,
+        #     num_poses=1)
+        # self.pose_detector = vision.PoseLandmarker.create_from_options(options)
 
         # Модуль распознавания лиц на изображении
         base_options = python.BaseOptions(model_asset_path='../models/face_landmarker.task')
@@ -208,14 +208,14 @@ class QRobot(QObject):
                     #print(f"{palm}: {gesture}")
 
         sceleton = {}
-        pose_detection_result = self.pose_detector.detect(mp_image)
-        pose_landmarks_list = pose_detection_result.pose_landmarks
-        if pose_landmarks_list:
-            for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
-                lm = pose_landmarks_list[0][idx]
-                #if lm.visibility > 0.9:
-                sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
-                                                          'point': (int(lm.x * width), int(lm.y * height))}
+        # pose_detection_result = self.pose_detector.detect(mp_image)
+        # pose_landmarks_list = pose_detection_result.pose_landmarks
+        # if pose_landmarks_list:
+        #     for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
+        #         lm = pose_landmarks_list[0][idx]
+        #         #if lm.visibility > 0.9:
+        #         sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
+        #                                                   'point': (int(lm.x * width), int(lm.y * height))}
         if hand_landmarks_list:
             for idx, lm in enumerate(hand_landmarks_list):
                 is_right_palm = hand_detection_results.multi_handedness[idx].classification[0].label == 'Left'
