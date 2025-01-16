@@ -173,6 +173,7 @@ class QRobot(QObject):
 
         data = {'Кадр' : {'Ширина' : width, 'Высота' : height}}
 
+        emotion = 0
         # Распознавание лиц
         face_detection_result = self.face_detector.detect(mp_image)
         annotated_image = self.draw_faces_on_image(image, face_detection_result)
@@ -182,7 +183,8 @@ class QRobot(QObject):
             data['Лицо'] = ranges
             emotion = self.detect_emotion(face_detection_result.face_blendshapes[0])
             if not emotion is None:
-                data['Лицо']['Эмоция'] = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
+                emotion = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
+                data['Лицо']['Эмоция'] = emotion
 
         # Распознавание рук и поз
 
