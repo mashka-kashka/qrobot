@@ -248,12 +248,19 @@ class QRobot(QObject):
                 else:
                     random_num = random.randint(0, 3)
 
-                    if random_num == 0:  # Бумага
-                        self.show_rock()
+                    if random_num == 0:    # Бумага
+                        while True:
+                            self.show_rock()
+                            break
                     elif random_num == 1:  # Ножницы
-                        self.show_paper()
+                        while True:
+                            self.show_paper()
+                            break
                     elif random_num == 2:  # Камень
-                        self.show_scissors()
+                        while True:
+                            self.show_scissors()
+                            break
+
         else:
             if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
                 print(f"Переключение в режим игры")
