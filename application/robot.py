@@ -61,6 +61,9 @@ class QRobot(QObject):
                       [43, 47, 49, 51, 53, 55, 51], [42, 46, 48, 50, 52, 54, 50], [46, 47]])
     ARM_PREFIXES = ['LEFT_', 'RIGHT_']
 
+    prev_emotion = -1
+    prev_gesture = -1
+
     def __init__(self, controller):
         super().__init__()
 
@@ -174,6 +177,7 @@ class QRobot(QObject):
         data = {'Кадр' : {'Ширина' : width, 'Высота' : height}}
 
         emotion = 0
+
         # Распознавание лиц
         face_detection_result = self.face_detector.detect(mp_image)
         annotated_image = self.draw_faces_on_image(image, face_detection_result)
@@ -238,29 +242,25 @@ class QRobot(QObject):
                 self.controller.set_servo_position(18, 1500)
                 self.controller.set_servo_position(20, 0)
             else:
-                if emotion == 12: # 🙁,Слегка нахмуренное лицо
-                    if left_gesture == 1:  # Бумага
-                        self.show_rock()
-                    elif left_gesture == 7:  # Ножницы
-                        self.show_paper()
-                    elif left_gesture == 26:  # Камень
-                        self.show_scissors()
-                else:
-                    random_num = random.randint(0, 3)
+                if (emotion != self.prev_emotion or left_gesture != self.prev_gesture):
+                    self.prev_emotion = emotion
+                    self.prev_gesture = left_gesture
 
-                    if random_num == 0:    # Бумага
-                        while True:
+                    if emotion == 12: # 🙁,Слегка нахмуренное лицо
+                        if left_gesture == 1:  # Бумага
                             self.show_rock()
-                            break
-                    elif random_num == 1:  # Ножницы
-                        while True:
+                        elif left_gesture == 7:  # Ножницы
                             self.show_paper()
-                            break
-                    elif random_num == 2:  # Камень
-                        while True:
+                        elif left_gesture == 26:  # Камень
                             self.show_scissors()
-                            break
-
+                    else:
+                        random_num = random.randint(0, 3)
+                        if random_num == 0:    # Бумага
+                             self.show_rock()
+                        elif random_num == 1:  # Ножницы
+                             self.show_paper()
+                        elif random_num == 2:  # Камень
+                             self.show_scissors()
         else:
             if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
                 print(f"Переключение в режим игры")
