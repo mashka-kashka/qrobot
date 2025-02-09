@@ -170,21 +170,8 @@ class QRobot(QObject):
                     'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
         return data
 
-    # Преобразование QImage в ndarray
-    def QImageToNdarray(self, image):
-        image = image.convertToFormat(QImage.Format.Format_RGB888)
-
-        width = image.width()
-        height = image.height()
-
-        ptr = image.bits()
-        ptr.setsize(height * width * 3)
-        arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 3))
-        return arr
-
     # Обработка кадра
-    def process_frame(self, frame):
-        image = self.QImageToNdarray(frame)
+    def process_frame(self, image):
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
         height = mp_image.height
         width = mp_image.width
