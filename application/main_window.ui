@@ -120,43 +120,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionConfig"/>
-   <addaction name="actionActivateRobot"/>
-   <addaction name="actionActivateComputer"/>
    <addaction name="separator"/>
    <addaction name="actionExit"/>
   </widget>
-  <action name="actionActivateRobot">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../robot/qrobot/icons/robot_green.png</normaloff>
-     <normalon>../../robot/qrobot/icons/robot_red.png</normalon>../../robot/qrobot/icons/robot_green.png</iconset>
-   </property>
-   <property name="text">
-    <string>Активировать робота</string>
-   </property>
-   <property name="iconText">
-    <string>Активация</string>
-   </property>
-   <property name="statusTip">
-    <string>Активировать робота</string>
-   </property>
-  </action>
-  <action name="actionConfig">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../robot/qrobot/icons/gear.png</normaloff>../../robot/qrobot/icons/gear.png</iconset>
-   </property>
-   <property name="text">
-    <string>Настройки</string>
-   </property>
-   <property name="statusTip">
-    <string>Открыть окно настроек робота</string>
-   </property>
-  </action>
   <action name="actionExit">
    <property name="icon">
     <iconset>
@@ -170,19 +136,6 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+X</string>
-   </property>
-  </action>
-  <action name="actionActivateComputer">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../robot/qrobot/icons/chip-green.png</normaloff>
-     <normalon>../../robot/qrobot/icons/chip-red.png</normalon>../../robot/qrobot/icons/chip-green.png</iconset>
-   </property>
-   <property name="text">
-    <string>Активировать компьютер</string>
    </property>
   </action>
  </widget>
@@ -204,58 +157,11 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>actionActivateRobot</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>on_activate_robot(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>493</x>
-     <y>333</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionConfig</sender>
-   <signal>triggered()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>on_config()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>551</x>
-     <y>417</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionActivateComputer</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>on_activate_computer(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>551</x>
-     <y>417</y>
-    </hint>
-   </hints>
-  </connection>
  </connections>
  <slots>
   <slot>on_activate_robot(bool)</slot>
   <slot>on_config()</slot>
   <slot>on_activate_computer(bool)</slot>
+  <slot>on_capture_frame()</slot>
  </slots>
 </ui>

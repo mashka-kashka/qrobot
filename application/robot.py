@@ -1,4 +1,5 @@
 import math
+
 import toml
 from PyQt6.QtCore import QObject, QPoint
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
@@ -168,8 +169,22 @@ class QRobot(QObject):
                     'z_min': z_min, 'z_max': z_max, 'dz': z_max - z_min,
                     'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
         return data
+
+    # Преобразование QImage в ndarray
+    def QImageToNdarray(self, image):
+        image = image.convertToFormat(QImage.Format.Format_RGB888)
+
+        width = image.width()
+        height = image.height()
+
+        ptr = image.bits()
+        ptr.setsize(height * width * 3)
+        arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 3))
+        return arr
+
     # Обработка кадра
-    def process_frame(self, image):
+    def process_frame(self, frame):
+        image = self.QImageToNdarray(frame)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
         height = mp_image.height
         width = mp_image.width
@@ -656,7 +671,7 @@ class QRobot(QObject):
             annotated_image.data,
             annotated_image.shape[1],
             annotated_image.shape[0],
-            QImage.Format.Format_BGR888,
+            QImage.Format.Format_RGB888,
         )
 
         painter = QPainter(image)
