@@ -18,134 +18,140 @@ emotions_labels = "../models/эмоции.csv"
 [controller]
 period = 100
 
-[servos.16]
-begin = 1600
-end = 1200
+#18
+[servos.15]
+begin = 2000
+end = 1000
 neutral = 1500
 name = "Подъём головы"
 
-[servos.17]
-begin = 2100
-end = 1000
-neutral = 1550
-name = "Поворот шеи"
+# Нужно заменить сервопривод
+#[servos.16]
+#begin = 1400
+#end = 1600
+#neutral = 1550
+#name = "Поворот шеи"
 
-[servos.18]
+[servos.14]
 begin = 500
 end = 2500
 neutral = 1500
 name = "Поворот правого плеча"
 
-[servos.19]
-begin = 1500
-end = 2400
-neutral = 1500
+[servos.17]
+begin = 500
+end = 2500
+neutral = 500
 name = "Подъём правого плеча"
 
-[servos.20]
+[servos.23]
 begin = 1500
 end = 2400
 neutral = 1500
 name = "Сгибание правого локтя"
 
-[servos.21]
-begin = 1500
+[servos.22]
+begin = 1700
 end = 1200
 neutral = 1200
 name = "Сгибание правого мизинца"
 
-[servos.23]
-begin = 1500
-end = 1200
-neutral = 1200
+[servos.21]
+begin = 1400
+end = 1100
+neutral = 1100
+reverse = true
 name = "Сгибание правого безымянного пальца"
 
-[servos.22]
-begin = 1200
-end = 1650
+[servos.24]
+begin = 1300
+end = 1750
 neutral = 1300
+reverse = true
 name = "Сгибание правого среднего пальца"
 
-[servos.24]
-begin = 1100
-end = 1700
-neutral = 1300
+[servos.26]
+begin = 1400
+end = 1800
+neutral = 1400
+reverse = true
 name = "Сгибание правого указательного пальца"
 
 [servos.25]
-begin = 1200
-end = 1600
-neutral = 1200
+begin = 1400
+end = 1700
+neutral = 1700
+reverse = true
 name = "Сгибание правого большого пальца"
 
-[servos.26]
+[servos.18]
 begin = 1500
 end = 1200
 neutral = 800
 name = "Отведение правой ноги"
 
-[servos.27]
+[servos.31]
 begin = 2400
 end = 600
 neutral = 600
 name = "Подъём правой ноги"
 
-[servos.28]
+[servos.0]
 begin = 1500
 end = 2400
 neutral = 1500
 name = "Сгибание правого колена"
 
-[servos.29]
+[servos.19]
 begin = 1200
-end = 2500
+end = 1800
 neutral = 1200
 reverse = true
 name = "Сгибание правой ступни"
 
-[servos.30]
+[servos.20]
 begin = 2000
 end = 1000
 neutral = 1500
 name = "Наклон правой ступни"
 
-[servos.15]
+[servos.13]
 begin = 500
 end = 2500
 neutral = 1500
 name = "Поворот левого плеча"
 
-[servos.14]
+[servos.12]
 begin = 1500
 end = 250
 neutral = 500
 name = "Подъём левого плеча"
 
-[servos.13]
+[servos.9]
 begin = 1400
 end = 500
 neutral = 500
 name = "Сгибание левого локтя"
 
-[servos.11]
+[servos.10]
 begin = 1200
 end = 1700
 neutral = 1200
 name = "Сгибание левого мизинца"
 
-[servos.12]
+[servos.5]
 begin = 1300
 end = 1700
 neutral = 1300
 name = "Сгибание левого безымянного пальца"
 
-[servos.10]
+[servos.6]
 begin = 1600
 end = 1300
 neutral = 1300
 name = "Сгибание левого среднего пальца"
 
-[servos.9]
+[servos.7]
 begin = 1650
 end = 1300
 neutral = 1300
@@ -157,31 +163,31 @@ end = 1100
 neutral = 1100
 name = "Сгибание левого большого пальца"
 
-[servos.7]
+[servos.11]
 begin = 1500
 end = 2500
 neutral = 1500
 name = "Отведение левой ноги"
 
-[servos.6]
+[servos.3]
 begin = 600
 end = 2400
 neutral = 1500
 name = "Подъём левой ноги"
 
-[servos.5]
+[servos.2]
 begin = 1500
 end = 400
 neutral = 1500
 name = "Сгибание левого колена"
 
-[servos.4]
+[servos.1]
 begin = 1500
 end = 1000
 neutral = 1500
 name = "Сгибание левой ступни"
 
-[servos.3]
+[servos.4]
 begin = 2000
 end = 1000
 neutral = 1500
