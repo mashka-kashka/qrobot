@@ -96,7 +96,7 @@ end = 600
 neutral = 600
 name = "Подъём правой ноги"
 
-[servos.0]
+[servos.32]
 begin = 1500
 end = 2400
 neutral = 1500
