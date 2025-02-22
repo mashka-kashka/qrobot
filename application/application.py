@@ -40,7 +40,7 @@ class QRobotApplication(QApplication):
 
     @pyqtSlot(object)
     def on_frame_captured(self, frame):
-        frame, data = self.robot.process_frame(frame)
+        frame = self.robot.process_frame(frame)
         self.show_frame_signal.emit(frame)
         # Получение следующего кадра
         QTimer.singleShot(10, self.camera.get_frame)

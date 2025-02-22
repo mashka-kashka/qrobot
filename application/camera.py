@@ -16,7 +16,7 @@ class QRobotCamera(QObject):
         super().__init__()
 
         self.format = 'RGB888'
-        self.size = (640, 480)
+        self.size = (1024, 768)
         with open('config.toml', 'r') as f:
             self.config = toml.load(f)
             self.format = self.config["camera"]["format"]
@@ -64,7 +64,7 @@ class QRobotCamera(QObject):
                 self.frame_captured_signal.emit(_frame)
             if self.image_capture:
                 self.image_capture.capture()
-        except:
+        except Exception:
             pass
 
     @pyqtSlot(int, QImage)

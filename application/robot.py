@@ -5,13 +5,13 @@ from PyQt6.QtCore import QObject, QPoint
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
 import mediapipe as mp
-from mediapipe import solutions
-from mediapipe.python.solutions import drawing_utils as mp_drawing
-from mediapipe.python.solutions import hands as mp_hands
-from mediapipe.python.solutions import hands as mp_hand_detector
-from mediapipe.framework.formats import landmark_pb2
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+from mediapipe.python.solutions.face_mesh_connections import FACEMESH_CONTOURS
+from mediapipe.python.solutions.face_mesh_connections import FACEMESH_TESSELATION
+from mediapipe.python.solutions.hands import HandLandmark
+from mediapipe.python.solutions.hands_connections import HAND_CONNECTIONS
+from mediapipe.python.solutions.pose import PoseLandmark
+from mediapipe.python.solutions.pose_connections import POSE_CONNECTIONS
+from mediapipe.python.solutions.drawing_utils import DrawingSpec
 import numpy as np
 import pandas as pd
 import pickle
@@ -25,43 +25,6 @@ class QRobot(QObject):
     DEFAULT_MODE = 0
     GAME_MODE = 1
 
-    FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
-                        'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
-                        'eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookDownLeft', 'eyeLookDownRight',
-                        'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight',
-                        'eyeLookUpLeft', 'eyeLookUpRight', 'eyeSquintLeft', 'eyeSquintRight',
-                        'eyeWideLeft', 'eyeWideRight', 'jawForward', 'jawLeft', 'jawOpen', 'jawRight',
-                        'mouthClose', 'mouthDimpleLeft', 'mouthDimpleRight', 'mouthFrownLeft',
-                        'mouthFrownRight', 'mouthFunnel', 'mouthLeft', 'mouthLowerDownLeft',
-                        'mouthLowerDownRight', 'mouthPressLeft', 'mouthPressRight', 'mouthPucker',
-                        'mouthRight', 'mouthRollLower', 'mouthRollUpper', 'mouthShrugLower', 'mouthShrugUpper',
-                        'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight',
-                        'mouthUpperUpLeft', 'mouthUpperUpRight', 'noseSneerLeft', 'noseSneerRight']
-    HAND_LANDMARKS = ['WRIST', 'THUMB_CMC', 'THUMB_MCP', 'THUMB_IP', 'THUMB_TIP', 'INDEX_FINGER_MCP',
-                      'INDEX_FINGER_PIP',
-                      'INDEX_FINGER_DIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_MCP', 'MIDDLE_FINGER_PIP',
-                      'MIDDLE_FINGER_DIP',
-                      'MIDDLE_FINGER_TIP', 'RING_FINGER_MCP', 'RING_FINGER_PIP', 'RING_FINGER_DIP', 'RING_FINGER_TIP',
-                      'PINKY_MCP', 'PINKY_PIP', 'PINKY_DIP', 'PINKY_TIP']
-    HAND_TIPS =      [('THUMB_TIP','PINKY_MCP'),
-                      ('INDEX_FINGER_TIP', 'INDEX_FINGER_MCP'),
-                      ('MIDDLE_FINGER_TIP', 'MIDDLE_FINGER_MCP'),
-                      ('RING_FINGER_TIP', 'RING_FINGER_MCP'),
-                      ('PINKY_TIP', 'PINKY_MCP')]
-    SERVOS_INDEX =   { 'LEFT_THUMB_TIP': 8, 'LEFT_INDEX_FINGER_TIP': 9, 'LEFT_MIDDLE_FINGER_TIP': 10,
-                       'LEFT_RING_FINGER_TIP': 12, 'LEFT_PINKY_TIP': 11, 'RIGHT_THUMB_TIP': 25,
-                       'RIGHT_INDEX_FINGER_TIP': 24, 'RIGHT_MIDDLE_FINGER_TIP': 22, 'RIGHT_RING_FINGER_TIP': 23,
-                       'RIGHT_PINKY_TIP': 21}
-    POSE_LANDMARKS = [ 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW', 'LEFT_HIP', 'RIGHT_HIP',
-                       'LEFT_KNEE', 'RIGHT_KNEE', 'LEFT_ANKLE', 'RIGHT_ANKLE', 'LEFT_HEEL', 'RIGHT_HEEL',
-                       'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX']
-    POSE_LANDMARK_IDS = list(range(11, 15)) + list(range(23, 33))
-    ROBOT_SEGMENTS = ([[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 17, 18, 19, 20], [9, 10, 11, 12], [13, 14, 15, 16],
-                      [5, 9, 13, 17], [21, 22, 23, 24, 25], [21, 26, 27, 28, 29], [21, 38, 39, 40, 41],
-                      [30, 31, 32, 33], [34, 35, 36, 37], [26, 30, 34, 38], [0, 44, 42, 43, 45, 21],
-                      [43, 47, 49, 51, 53, 55, 51], [42, 46, 48, 50, 52, 54, 50], [46, 47]])
-    ARM_PREFIXES = ['LEFT_', 'RIGHT_']
-
     prev_emotion = -1
     prev_gesture = -1
 
@@ -71,44 +34,24 @@ class QRobot(QObject):
         self.controller = controller
         self.mode = self.DEFAULT_MODE
 
-        self.red_pen = QPen()
-        self.red_pen.setWidth(3)
-        self.red_pen.setColor(QColor(200, 0, 0))
-        self.green_pen = QPen()
-        self.green_pen.setWidth(3)
-        self.green_pen.setColor(QColor(0, 200, 0))
-        self.emoji_font = QFont("Noto Color Emoji", 64)
-        self.robot_data = {}
-        self.servo_values = np.zeros(32)
+        self.emoji_font = QFont("Noto Color Emoji", 80)
 
-        # Список наименований ключевых точек
-        QRobot.ROBOT_LANDMARKS = []
-        for prefix in QRobot.ARM_PREFIXES:
-            self.ROBOT_LANDMARKS += [prefix + x for x in QRobot.HAND_LANDMARKS]
-        QRobot.ROBOT_LANDMARKS += QRobot.POSE_LANDMARKS
+        # Модуль распознавания лиц, рук и скелета на изображении
+        base_options = mp.tasks.BaseOptions(model_asset_path='../models/hand_landmark.task')
+        options = mp.tasks.vision.HolisticLandmarkerOptions(base_options=base_options,
+                                                            running_mode = mp.tasks.vision.RunningMode.VIDEO,
+                                                            min_pose_landmarks_confidence = 0.7,
+                                                            output_face_blendshapes=True)
+        self.mp_holictic_landmarker = mp.tasks.vision.HolisticLandmarker.create_from_options(options)
+        self.mp_holistic = mp.solutions.holistic.Holistic(  static_image_mode=False,
+                                                            model_complexity=2,
+                                                            enable_segmentation=False,
+                                                            refine_face_landmarks=True)
 
-        # Модуль распознавания ладони на изображении
-        self.hand_detector = mp_hand_detector.Hands(
-            static_image_mode=False,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7,
-            max_num_hands=2)
-
-        # Модуль распознавания поз на изображении
-        # base_options = python.BaseOptions(model_asset_path='../models/pose_landmarker_full.task')
-        # options = vision.PoseLandmarkerOptions(
-        #     base_options=base_options,
-        #     output_segmentation_masks=True,
-        #     num_poses=1)
-        # self.pose_detector = vision.PoseLandmarker.create_from_options(options)
-
-        # Модуль распознавания лиц на изображении
-        base_options = python.BaseOptions(model_asset_path='../models/face_landmarker.task')
-        options = vision.FaceLandmarkerOptions(base_options=base_options,
-                                              output_face_blendshapes=True,
-                                              output_facial_transformation_matrixes=True,
-                                              num_faces=1)
-        self.face_detector = vision.FaceLandmarker.create_from_options(options)
+        mp.solutions.holistic.
+        # Модуль отображения
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
 
         # Модели для распознвания жестов и эмоций
         if torch.cuda.is_available():
@@ -172,117 +115,185 @@ class QRobot(QObject):
 
     # Обработка кадра
     def process_frame(self, image):
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
-        height = mp_image.height
-        width = mp_image.width
+        frame_height = image.shape[0]
+        frame_width = image.shape[1]
 
-        data = {'Кадр' : {'Ширина' : width, 'Высота' : height}}
+        res = self.mp_holictic_landmarker.process(image)
 
-        emotion = 0
+        results = self.mp_holistic.process(image)
 
-        # Распознавание лиц
-        face_detection_result = self.face_detector.detect(mp_image)
-        annotated_image = self.draw_faces_on_image(image, face_detection_result)
+        # Обработка лица
+        emotion_label = None
+        if results.face_landmarks:
+            #emotion = self.detect_emotion(self.face_detection_result.face_blendshapes[0])
+            #if not emotion is None:
+            #    emotion = (int(emotion), self.emotions_labels.loc[emotion]['Unicode'])
+            # Отображение контуров лица
+            self.mp_drawing.draw_landmarks(
+                image,
+                results.face_landmarks,
+                FACEMESH_CONTOURS,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=self.mp_drawing_styles
+                .get_default_face_mesh_contours_style())
 
-        if len(face_detection_result.face_landmarks) > 0:
-            ranges = self.get_ranges(face_detection_result.face_landmarks[0], width, height)
-            data['Лицо'] = ranges
-            emotion = self.detect_emotion(face_detection_result.face_blendshapes[0])
-            if not emotion is None:
-                emotion = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
-                data['Лицо']['Эмоция'] = emotion
+        # Обработка левой ладони
+        left_gesture_label = None
+        if results.left_hand_landmarks:
+            bounds = self.get_ranges(results.left_hand_landmarks.landmark, frame_width, frame_height)
+            gesture = int(self.detect_gesture(results.left_hand_landmarks.landmark, bounds, 1))
+            left_gesture_label = self.gestures_labels.loc[gesture]['Unicode']
 
-        # Распознавание рук и поз
+            # Отображение левой ладони
+            self.mp_drawing.draw_landmarks(
+                image,
+                results.left_hand_landmarks,
+                HAND_CONNECTIONS,
+                landmark_drawing_spec=self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                connection_drawing_spec=self.mp_drawing_styles
+                .get_default_hand_connections_style()
+            )
 
-        right_gesture = 0
-        left_gesture = 0
+        # Обработка правой ладони
+        right_gesture_label = None
+        if results.right_hand_landmarks:
+            bounds = self.get_ranges(results.right_hand_landmarks.landmark, frame_width, frame_height)
+            gesture = int(self.detect_gesture(results.right_hand_landmarks.landmark, bounds, 1))
+            right_gesture_label = self.gestures_labels.loc[gesture]['Unicode']
 
-        hand_detection_results = self.hand_detector.process(image)
-        hand_landmarks_list = hand_detection_results.multi_hand_landmarks
-        if hand_landmarks_list:
-            for idx, lm in enumerate(hand_landmarks_list):
-                bounds = self.get_ranges(lm.landmark, width, height)
-                classification = hand_detection_results.multi_handedness[idx].classification[0]
-                palm = "Правая ладонь" if classification.label == 'Left' else "Левая ладонь"
-                data[palm] = bounds
-                score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
-                gesture = self.detect_gesture(lm.landmark, bounds, score)
-                if not gesture is None:
-                    data[palm]['Жест'] = (int(gesture),self.gestures_labels.loc[gesture]['Unicode'])
-                    if classification.label == 'Left':
-                        left_gesture = int(gesture)
-                    else:
-                        right_gesture = int(gesture)
-                    #print(f"{palm}: {gesture}")
+            # Отображение правой ладони
+            self.mp_drawing.draw_landmarks(
+                image,
+                results.right_hand_landmarks,
+                HAND_CONNECTIONS,
+                landmark_drawing_spec=self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                connection_drawing_spec=self.mp_drawing_styles
+                .get_default_hand_connections_style()
+            )
 
-        sceleton = {}
-        # pose_detection_result = self.pose_detector.detect(mp_image)
-        # pose_landmarks_list = pose_detection_result.pose_landmarks
-        # if pose_landmarks_list:
-        #     for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
-        #         lm = pose_landmarks_list[0][idx]
-        #         #if lm.visibility > 0.9:
-        #         sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
-        #                                                   'point': (int(lm.x * width), int(lm.y * height))}
-        if hand_landmarks_list:
-            for idx, lm in enumerate(hand_landmarks_list):
-                is_right_palm = hand_detection_results.multi_handedness[idx].classification[0].label == 'Left'
-                for pidx, pt in enumerate(lm.landmark):
-                    if is_right_palm:
-                        sceleton['RIGHT_' + QRobot.HAND_LANDMARKS[pidx]] = {'x': pt.x, 'y': pt.y, 'z': pt.z,
-                                                                            'point': (int(pt.x * width),
-                                                                                      int(pt.y * height))}
-                    else:
-                        sceleton['LEFT_' + QRobot.HAND_LANDMARKS[pidx]] = {'x': pt.x, 'y': pt.y, 'z': pt.z,
-                                                                           'point': (int(pt.x * width),
-                                                                                     int(pt.y * height))}
-        if self.mode == self.GAME_MODE:
-            if right_gesture == 1 and left_gesture == 1:  # ✋ + ✋
-                print(f"Сброс")
-                self.mode = self.DEFAULT_MODE
-                self.controller.set_servo_position(19, 0)
-                self.controller.set_servo_position(18, 1500)
-                self.controller.set_servo_position(20, 0)
-            else:
-                if (emotion != self.prev_emotion or left_gesture != self.prev_gesture):
-                    self.prev_emotion = emotion
-                    self.prev_gesture = left_gesture
+        annotated_image = QImage(
+            image.data,
+            image.shape[1],
+            image.shape[0],
+            QImage.Format.Format_RGB888,
+        )
 
-                    if emotion == 12: # 🙁,Слегка нахмуренное лицо
-                        if left_gesture == 1:  # Бумага
-                            self.show_rock()
-                        elif left_gesture == 7:  # Ножницы
-                            self.show_paper()
-                        elif left_gesture == 26:  # Камень
-                            self.show_scissors()
-                    else:
-                        random_num = random.randint(0, 3)
-                        if random_num == 0:    # Бумага
-                             self.show_rock()
-                        elif random_num == 1:  # Ножницы
-                             self.show_paper()
-                        elif random_num == 2:  # Камень
-                             self.show_scissors()
-        else:
-            if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
-                print(f"Переключение в режим игры")
-                self.mode = self.GAME_MODE
-                self.controller.set_servo_position(19, 1700)
-                self.controller.set_servo_position(18, 2500)
-                self.controller.set_servo_position(20, 1800)
-            else:
-                # Расчеты по скелету
-                self.calc_sceleton(sceleton)
+        painter = QPainter(annotated_image)
+        painter.setFont(self.emoji_font)
+        if left_gesture_label:
+            painter.drawText(QPoint(frame_width - 115, frame_height - 30), left_gesture_label)
+        if right_gesture_label:
+            painter.drawText(QPoint(5, frame_height - 30), right_gesture_label)
+        painter.end()
 
-        data['Скелет'] = sceleton
-#        with open("sceleton.json", "w") as outfile:
-#            json.dump(data, outfile)
-
-        annotated_image = self.draw_sceleton_on_image(annotated_image, data)
-        annotated_image = self.draw_emotion_on_image(annotated_image, data)
-        annotated_image = self.draw_gestures_on_image(annotated_image, data)
-
-        return annotated_image, data
+        return annotated_image
+#         data = {'Кадр' : {'Ширина' : width, 'Высота' : height}}
+#
+#         emotion = 0
+#
+#         # Распознавание лиц
+#         face_detection_result = self.face_detector.detect(mp_image)
+#         annotated_image = self.draw_faces_on_image(image, face_detection_result)
+#
+#         if len(face_detection_result.face_landmarks) > 0:
+#             ranges = self.get_ranges(face_detection_result.face_landmarks[0], width, height)
+#             data['Лицо'] = ranges
+#             emotion = self.detect_emotion(face_detection_result.face_blendshapes[0])
+#             if not emotion is None:
+#                 emotion = (int(emotion),self.emotions_labels.loc[emotion]['Unicode'])
+#                 data['Лицо']['Эмоция'] = emotion
+#
+#         # Распознавание рук и поз
+#
+#         right_gesture = 0
+#         left_gesture = 0
+#
+#         hand_detection_results = self.hand_detector.process(image)
+#         hand_landmarks_list = hand_detection_results.multi_hand_landmarks
+#         if hand_landmarks_list:
+#             for idx, lm in enumerate(hand_landmarks_list):
+#                 bounds = self.get_ranges(lm.landmark, width, height)
+#                 classification = hand_detection_results.multi_handedness[idx].classification[0]
+#                 palm = "Правая ладонь" if classification.label == 'Left' else "Левая ладонь"
+#                 data[palm] = bounds
+#                 score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
+#                 gesture = self.detect_gesture(lm.landmark, bounds, score)
+#                 if not gesture is None:
+#                     data[palm]['Жест'] = (int(gesture),self.gestures_labels.loc[gesture]['Unicode'])
+#                     if classification.label == 'Left':
+#                         left_gesture = int(gesture)
+#                     else:
+#                         right_gesture = int(gesture)
+#                     #print(f"{palm}: {gesture}")
+#
+#         sceleton = {}
+#         # pose_detection_result = self.pose_detector.detect(mp_image)
+#         # pose_landmarks_list = pose_detection_result.pose_landmarks
+#         # if pose_landmarks_list:
+#         #     for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
+#         #         lm = pose_landmarks_list[0][idx]
+#         #         #if lm.visibility > 0.9:
+#         #         sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
+#         #                                                   'point': (int(lm.x * width), int(lm.y * height))}
+#         if hand_landmarks_list:
+#             for idx, lm in enumerate(hand_landmarks_list):
+#                 is_right_palm = hand_detection_results.multi_handedness[idx].classification[0].label == 'Left'
+#                 for pidx, pt in enumerate(lm.landmark):
+#                     if is_right_palm:
+#                         sceleton['RIGHT_' + QRobot.HAND_LANDMARKS[pidx]] = {'x': pt.x, 'y': pt.y, 'z': pt.z,
+#                                                                             'point': (int(pt.x * width),
+#                                                                                       int(pt.y * height))}
+#                     else:
+#                         sceleton['LEFT_' + QRobot.HAND_LANDMARKS[pidx]] = {'x': pt.x, 'y': pt.y, 'z': pt.z,
+#                                                                            'point': (int(pt.x * width),
+#                                                                                      int(pt.y * height))}
+#         if self.mode == self.GAME_MODE:
+#             if right_gesture == 1 and left_gesture == 1:  # ✋ + ✋
+#                 print(f"Сброс")
+#                 self.mode = self.DEFAULT_MODE
+#                 self.controller.set_servo_position(19, 0)
+#                 self.controller.set_servo_position(18, 1500)
+#                 self.controller.set_servo_position(20, 0)
+#             else:
+#                 if (emotion != self.prev_emotion or left_gesture != self.prev_gesture):
+#                     self.prev_emotion = emotion
+#                     self.prev_gesture = left_gesture
+#
+#                     if emotion == 12: # 🙁,Слегка нахмуренное лицо
+#                         if left_gesture == 1:  # Бумага
+#                             self.show_rock()
+#                         elif left_gesture == 7:  # Ножницы
+#                             self.show_paper()
+#                         elif left_gesture == 26:  # Камень
+#                             self.show_scissors()
+#                     else:
+#                         random_num = random.randint(0, 3)
+#                         if random_num == 0:    # Бумага
+#                              self.show_rock()
+#                         elif random_num == 1:  # Ножницы
+#                              self.show_paper()
+#                         elif random_num == 2:  # Камень
+#                              self.show_scissors()
+#         else:
+#             if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
+#                 print(f"Переключение в режим игры")
+#                 self.mode = self.GAME_MODE
+#                 self.controller.set_servo_position(19, 1700)
+#                 self.controller.set_servo_position(18, 2500)
+#                 self.controller.set_servo_position(20, 1800)
+#             else:
+#                 # Расчеты по скелету
+#                 self.calc_sceleton(sceleton)
+#
+#         data['Скелет'] = sceleton
+# #        with open("sceleton.json", "w") as outfile:
+# #            json.dump(data, outfile)
+#
+#         annotated_image = self.draw_sceleton_on_image(annotated_image, data)
+#         annotated_image = self.draw_emotion_on_image(annotated_image, data)
+#         annotated_image = self.draw_gestures_on_image(annotated_image, data)
+#
+#         return annotated_image, data
 
     def show_rock(self):
         self.controller.set_servo_position(25, 1200)
