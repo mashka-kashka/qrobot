@@ -12,10 +12,12 @@ from mediapipe.python.solutions import hands as mp_hand_detector
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+import sounddevice as sd
 import numpy as np
 import pandas as pd
 import pickle
 import torch
+import time
 import os
 import random
 
@@ -144,34 +146,45 @@ class QRobot(QObject):
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
 
-    def get_ranges(self, input_list, width, height):
-        x_min = x_max = None
-        y_min = y_max = None
-        z_min = z_max = None
-        visible = False
-        data = None
-        if input_list:
-            for lm in input_list:
-                if not x_min or lm.x < x_min:
-                    x_min = max(0.0, lm.x)
-                if not y_min or lm.y < y_min:
-                    y_min = max(0.0, lm.y)
-                if not z_min or lm.z < z_min:
-                    z_min = max(0.0, lm.z)
-                if not x_max or lm.x > x_max:
-                    x_max = min(1.0, lm.x)
-                if not y_max or lm.y > y_max:
-                    y_max = min(1.0, lm.y)
-                if not z_max or lm.z > z_max:
-                    z_max = min(1.0, lm.z)
-                if x_min > 0.0 or x_max < 1.0 or y_min > 0.0 or y_max < 1.0:
-                    visible = True
-            data = {'visible': visible,
-                    'x_min': x_min, 'x_max': x_max, 'dx': x_max - x_min,
-                    'y_min': y_min, 'y_max': y_max, 'dy': y_max - y_min,
-                    'z_min': z_min, 'z_max': z_max, 'dz': z_max - z_min,
-                    'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
-        return data
+            # Модели для синтеза голоса
+            tts = self.config["tts"]
+            self.sample_rate = tts["sample_rate"]
+            self.speaker = tts["speaker"]
+            torch.set_num_threads(8)  # количество задействованных потоков CPU
+
+            self.tts_model = torch.package.PackageImporter("../models/v4_ru.pt").load_pickle("tts_models", "model")
+            torch._C._jit_set_profiling_mode(False)
+            torch.set_grad_enabled(False)
+            self.tts_model.to(self.device)
+
+    def say(self, text):
+        audio = self.tts_model.apply_tts(text=text + "..",
+                                speaker=self.speaker,
+                                sample_rate=self.sample_rate,
+                                put_accent=True,
+                                put_yo=False)
+        #os.system(off_mic)  # глушим микрофон
+        sd.play(audio, self.sample_rate)
+        time.sleep((len(audio) / self.sample_rate) + 0.5)
+        sd.stop()
+        #os.system(on_mic)  # отключаем глушилку микрофона
+        del audio
+
+            # Обработка команды
+    def process_command(self, command):
+        match command:
+            case 'hello':
+                self.cmd_hello()
+            case 'meet':
+                self.cmd_meet()
+            case _:
+                self.say("Не понимаю")
+
+    def cmd_hello(self):
+        self.say("Привет")
+
+    def cmd_meet(self):
+        self.say("Меня зовут Анатолий")
 
     # Обработка кадра
     def process_frame(self, image):
@@ -285,6 +298,35 @@ class QRobot(QObject):
         annotated_image = self.draw_gestures_on_image(annotated_image, data)
 
         return annotated_image, data
+
+    def get_ranges(self, input_list, width, height):
+        x_min = x_max = None
+        y_min = y_max = None
+        z_min = z_max = None
+        visible = False
+        data = None
+        if input_list:
+            for lm in input_list:
+                if not x_min or lm.x < x_min:
+                    x_min = max(0.0, lm.x)
+                if not y_min or lm.y < y_min:
+                    y_min = max(0.0, lm.y)
+                if not z_min or lm.z < z_min:
+                    z_min = max(0.0, lm.z)
+                if not x_max or lm.x > x_max:
+                    x_max = min(1.0, lm.x)
+                if not y_max or lm.y > y_max:
+                    y_max = min(1.0, lm.y)
+                if not z_max or lm.z > z_max:
+                    z_max = min(1.0, lm.z)
+                if x_min > 0.0 or x_max < 1.0 or y_min > 0.0 or y_max < 1.0:
+                    visible = True
+            data = {'visible': visible,
+                    'x_min': x_min, 'x_max': x_max, 'dx': x_max - x_min,
+                    'y_min': y_min, 'y_max': y_max, 'dy': y_max - y_min,
+                    'z_min': z_min, 'z_max': z_max, 'dz': z_max - z_min,
+                    'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
+        return data
 
     def show_rock(self):
         self.controller.set_servo_position(25, 1200)

@@ -63,6 +63,7 @@ class QRobotApplication(QApplication):
     @pyqtSlot(object)
     def on_command_recognized(self, command):
         self.log_signal.emit(f"Получена команда: {command}", LogMessageType.WARNING)
+        self.robot.process_command(command)
 
 if __name__ == "__main__":
     app = QRobotApplication(sys.argv)

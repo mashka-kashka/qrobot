@@ -40,6 +40,10 @@ phrases = ['нет', 'не хочу']
 [command.objects]
 phrases = ['определи объект', 'угадай', 'что это']
 
+[tts]
+sample_rate = 24000  # 8000, 24000, 48000 - частота дискретизации генерируемого аудиопотока
+speaker = 'eugene'  # eugene, aidar, baya, kseniya, xenia, random - модель голоса
+
 [models]
 gestures_model = "../models/камень_ножницы_бумага.mdl"
 gestures_labels = "../models/жесты.csv"
