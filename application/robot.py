@@ -150,7 +150,7 @@ class QRobot(QObject):
             tts = self.config["tts"]
             self.sample_rate = tts["sample_rate"]
             self.speaker = tts["speaker"]
-            torch.set_num_threads(8)  # количество задействованных потоков CPU
+            #torch.set_num_threads(8)  # количество задействованных потоков CPU
 
             self.tts_model = torch.package.PackageImporter("../models/v4_ru.pt").load_pickle("tts_models", "model")
             torch._C._jit_set_profiling_mode(False)
@@ -158,11 +158,11 @@ class QRobot(QObject):
             self.tts_model.to(self.device)
 
     def say(self, text):
-        audio = self.tts_model.apply_tts(text=text + "..",
+        audio = self.tts_model.apply_tts(ssml_text=f'<speak><prosody rate="slow">{text}</prosody></speak>', #text + "..",
                                 speaker=self.speaker,
                                 sample_rate=self.sample_rate,
                                 put_accent=True,
-                                put_yo=False)
+                                put_yo=True)
         #os.system(off_mic)  # глушим микрофон
         sd.play(audio, self.sample_rate)
         time.sleep((len(audio) / self.sample_rate) + 0.5)
@@ -171,20 +171,20 @@ class QRobot(QObject):
         del audio
 
             # Обработка команды
-    def process_command(self, command):
+    def process_command(self, command, phrase):
         match command:
             case 'hello':
                 self.cmd_hello()
             case 'meet':
                 self.cmd_meet()
             case _:
-                self.say("Не понимаю")
+                self.say(f"Не понял фразу {phrase}.")
 
     def cmd_hello(self):
-        self.say("Привет")
+        self.say("Привет!")
 
     def cmd_meet(self):
-        self.say("Меня зовут Анатолий")
+        self.say("Меня зовут Анатолий. А как вас зовут?")
 
     # Обработка кадра
     def process_frame(self, image):

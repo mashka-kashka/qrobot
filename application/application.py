@@ -56,14 +56,14 @@ class QRobotApplication(QApplication):
         # Получение следующего кадра
         QTimer.singleShot(10, self.camera.get_frame)
 
-    @pyqtSlot(object)
+    @pyqtSlot(str)
     def on_phrase_captured(self, phrase):
         self.log_signal.emit(f"Услышал фразу: {phrase}", LogMessageType.STATUS)
 
-    @pyqtSlot(object)
-    def on_command_recognized(self, command):
+    @pyqtSlot(str, str)
+    def on_command_recognized(self, command, phrase):
         self.log_signal.emit(f"Получена команда: {command}", LogMessageType.WARNING)
-        self.robot.process_command(command)
+        self.robot.process_command(command, phrase)
 
 if __name__ == "__main__":
     app = QRobotApplication(sys.argv)

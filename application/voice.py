@@ -9,8 +9,8 @@ import sys
 
 
 class QRobotVoice(QObject):
-    phrase_captured_signal = pyqtSignal(object)
-    command_recognized_signal = pyqtSignal(object)
+    phrase_captured_signal = pyqtSignal(str)
+    command_recognized_signal = pyqtSignal(str, str)
 
     def __init__(self):
         super().__init__()
@@ -64,4 +64,4 @@ class QRobotVoice(QObject):
                     res_command = command
 
         if max_ratio >= self.min_command_confidence:
-            self.command_recognized_signal.emit(res_command)
+            self.command_recognized_signal.emit(res_command, cmd)
