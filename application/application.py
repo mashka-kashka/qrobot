@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 from PyQt6.QtCore import pyqtSignal,  pyqtSlot, QTimer
 from PyQt6.QtWidgets import QApplication
+
 from servo_controller import QServoController
 from log_message_type import LogMessageType
 from main_window import QRobotMainWindow
 from robot import QRobot
 from camera import QRobotCamera
+from voice import QRobotVoice
 import platform
 import sys
 
@@ -35,6 +37,11 @@ class QRobotApplication(QApplication):
         self.camera.start()
         self.camera.get_frame() # Получение первого кадра
 
+        # Голос
+        self.voice = QRobotVoice()
+        self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
+        self.voice.listen()
+
     def stop(self):
         self.camera.stop()
 
@@ -44,6 +51,10 @@ class QRobotApplication(QApplication):
         self.show_frame_signal.emit(frame)
         # Получение следующего кадра
         QTimer.singleShot(10, self.camera.get_frame)
+
+    @pyqtSlot(object)
+    def on_phrase_captured(self, phrase):
+        self.log_signal.emit(f"Услышал фразу: {phrase}", LogMessageType.STATUS)
 
 if __name__ == "__main__":
     app = QRobotApplication(sys.argv)
