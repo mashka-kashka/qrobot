@@ -5,7 +5,7 @@ width = 1024
 height = 768
 
 [microphone]
-device = 4
+device = 17
 model = "../models/vosk-model-small-ru-0.22"
 samplerate = 44100
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from PyQt6.QtCore import pyqtSignal,  pyqtSlot, QTimer
+from PyQt6.QtCore import QThread, pyqtSignal,  pyqtSlot, QTimer
 from PyQt6.QtWidgets import QApplication
 
 from servo_controller import QServoController
@@ -38,9 +38,12 @@ class QRobotApplication(QApplication):
         self.camera.get_frame() # Получение первого кадра
 
         # Голос
+        self.voice_thread = QThread()
         self.voice = QRobotVoice()
+        self.voice.moveToThread(self.voice_thread)
         self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
-        self.voice.listen()
+        self.voice_thread.started.connect(self.voice.listen)
+        self.voice_thread.start()
 
     def stop(self):
         self.camera.stop()

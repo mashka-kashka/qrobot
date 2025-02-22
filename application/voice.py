@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 import sounddevice as sd
 import vosk
 import json
@@ -26,21 +26,23 @@ class QRobotVoice(QObject):
             print(status, file=sys.stderr)
         self.q.put(bytes(indata))
 
+    @pyqtSlot()
     def listen(self):
         dev = sd.query_devices()
-        prev_text = None
+        self.prev_phrase = None
         with sd.RawInputStream(samplerate=self.samplerate, device=self.microphone,
                                dtype="int16", channels=1, callback=self.callback):
             rec = vosk.KaldiRecognizer(self.model, self.samplerate)
             while True:
                 data = self.q.get()
                 if rec.AcceptWaveform(data):
-                    res = json.loads(rec.Result())["text"]
-                    if res:
-                        prev_text = None
-                        print(f"Фраза целиком: {res}")
+                    phrase = json.loads(rec.Result())["text"]
+                    if phrase:
+                        self.prev_phrase = None
+                        print(f"Фраза: {phrase}")
+                        self.phrase_captured_signal.emit(phrase)
                 else:
-                    res = json.loads(rec.PartialResult())["partial"]
-                    if res and res != prev_text:
-                        prev_text = res
-                        print(f"Поток: {res}")
+                    phrase = json.loads(rec.PartialResult())["partial"]
+                    if phrase and phrase != self.prev_phrase:
+                        self.prev_phrase = phrase
+                        print(f"Отрывок фразы: {phrase}")
