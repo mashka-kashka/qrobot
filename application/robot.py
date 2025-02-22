@@ -37,30 +37,30 @@ class QRobot(QObject):
                         'mouthRight', 'mouthRollLower', 'mouthRollUpper', 'mouthShrugLower', 'mouthShrugUpper',
                         'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight',
                         'mouthUpperUpLeft', 'mouthUpperUpRight', 'noseSneerLeft', 'noseSneerRight']
-    HAND_LANDMARKS = ['WRIST', 'THUMB_CMC', 'THUMB_MCP', 'THUMB_IP', 'THUMB_TIP', 'INDEX_FINGER_MCP',
-                      'INDEX_FINGER_PIP',
-                      'INDEX_FINGER_DIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_MCP', 'MIDDLE_FINGER_PIP',
-                      'MIDDLE_FINGER_DIP',
-                      'MIDDLE_FINGER_TIP', 'RING_FINGER_MCP', 'RING_FINGER_PIP', 'RING_FINGER_DIP', 'RING_FINGER_TIP',
-                      'PINKY_MCP', 'PINKY_PIP', 'PINKY_DIP', 'PINKY_TIP']
-    HAND_TIPS =      [('THUMB_TIP','PINKY_MCP'),
-                      ('INDEX_FINGER_TIP', 'INDEX_FINGER_MCP'),
-                      ('MIDDLE_FINGER_TIP', 'MIDDLE_FINGER_MCP'),
-                      ('RING_FINGER_TIP', 'RING_FINGER_MCP'),
-                      ('PINKY_TIP', 'PINKY_MCP')]
-    SERVOS_INDEX =   { 'LEFT_THUMB_TIP': 8, 'LEFT_INDEX_FINGER_TIP': 9, 'LEFT_MIDDLE_FINGER_TIP': 10,
-                       'LEFT_RING_FINGER_TIP': 12, 'LEFT_PINKY_TIP': 11, 'RIGHT_THUMB_TIP': 25,
-                       'RIGHT_INDEX_FINGER_TIP': 24, 'RIGHT_MIDDLE_FINGER_TIP': 22, 'RIGHT_RING_FINGER_TIP': 23,
-                       'RIGHT_PINKY_TIP': 21}
-    POSE_LANDMARKS = [ 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW', 'LEFT_HIP', 'RIGHT_HIP',
-                       'LEFT_KNEE', 'RIGHT_KNEE', 'LEFT_ANKLE', 'RIGHT_ANKLE', 'LEFT_HEEL', 'RIGHT_HEEL',
-                       'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX']
+    HAND_LANDMARKS   = ['WRIST', 'THUMB_CMC', 'THUMB_MCP', 'THUMB_IP', 'THUMB_TIP', 'INDEX_FINGER_MCP',
+                        'INDEX_FINGER_PIP',
+                        'INDEX_FINGER_DIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_MCP', 'MIDDLE_FINGER_PIP',
+                        'MIDDLE_FINGER_DIP',
+                        'MIDDLE_FINGER_TIP', 'RING_FINGER_MCP', 'RING_FINGER_PIP', 'RING_FINGER_DIP', 'RING_FINGER_TIP',
+                        'PINKY_MCP', 'PINKY_PIP', 'PINKY_DIP', 'PINKY_TIP']
+    HAND_TIPS       = [('THUMB_TIP','PINKY_MCP'),
+                       ('INDEX_FINGER_TIP', 'INDEX_FINGER_MCP'),
+                       ('MIDDLE_FINGER_TIP', 'MIDDLE_FINGER_MCP'),
+                       ('RING_FINGER_TIP', 'RING_FINGER_MCP'),
+                       ('PINKY_TIP', 'PINKY_MCP')]
+    SERVOS_INDEX    =  {'LEFT_THUMB_TIP': 8, 'LEFT_INDEX_FINGER_TIP': 9, 'LEFT_MIDDLE_FINGER_TIP': 10,
+                        'LEFT_RING_FINGER_TIP': 12, 'LEFT_PINKY_TIP': 11, 'RIGHT_THUMB_TIP': 25,
+                        'RIGHT_INDEX_FINGER_TIP': 24, 'RIGHT_MIDDLE_FINGER_TIP': 22, 'RIGHT_RING_FINGER_TIP': 23,
+                        'RIGHT_PINKY_TIP': 21}
+    POSE_LANDMARKS  =  ['LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW', 'LEFT_HIP', 'RIGHT_HIP',
+                        'LEFT_KNEE', 'RIGHT_KNEE', 'LEFT_ANKLE', 'RIGHT_ANKLE', 'LEFT_HEEL', 'RIGHT_HEEL',
+                        'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX']
     POSE_LANDMARK_IDS = list(range(11, 15)) + list(range(23, 33))
     ROBOT_SEGMENTS = ([[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 17, 18, 19, 20], [9, 10, 11, 12], [13, 14, 15, 16],
                       [5, 9, 13, 17], [21, 22, 23, 24, 25], [21, 26, 27, 28, 29], [21, 38, 39, 40, 41],
                       [30, 31, 32, 33], [34, 35, 36, 37], [26, 30, 34, 38], [0, 44, 42, 43, 45, 21],
                       [43, 47, 49, 51, 53, 55, 51], [42, 46, 48, 50, 52, 54, 50], [46, 47]])
-    ARM_PREFIXES = ['LEFT_', 'RIGHT_']
+    ARM_PREFIXES   =  ['LEFT_', 'RIGHT_']
 
     prev_emotion = -1
     prev_gesture = -1
@@ -72,10 +72,10 @@ class QRobot(QObject):
         self.mode = self.DEFAULT_MODE
 
         self.red_pen = QPen()
-        self.red_pen.setWidth(3)
+        self.red_pen.setWidth(5)
         self.red_pen.setColor(QColor(200, 0, 0))
         self.green_pen = QPen()
-        self.green_pen.setWidth(3)
+        self.green_pen.setWidth(5)
         self.green_pen.setColor(QColor(0, 200, 0))
         self.emoji_font = QFont("Noto Color Emoji", 64)
         self.robot_data = {}
@@ -95,12 +95,15 @@ class QRobot(QObject):
             max_num_hands=2)
 
         # Модуль распознавания поз на изображении
-        # base_options = python.BaseOptions(model_asset_path='../models/pose_landmarker_full.task')
-        # options = vision.PoseLandmarkerOptions(
-        #     base_options=base_options,
-        #     output_segmentation_masks=True,
-        #     num_poses=1)
-        # self.pose_detector = vision.PoseLandmarker.create_from_options(options)
+        base_options = python.BaseOptions(model_asset_path='../models/pose_landmarker_full.task')
+        options = vision.PoseLandmarkerOptions(
+             base_options=base_options,
+             running_mode=vision.RunningMode.IMAGE,
+             output_segmentation_masks=False,
+             min_pose_detection_confidence=0.7,
+             min_pose_presence_confidence=0.7,
+             num_poses=1)
+        self.pose_detector = vision.PoseLandmarker.create_from_options(options)
 
         # Модуль распознавания лиц на изображении
         base_options = python.BaseOptions(model_asset_path='../models/face_landmarker.task')
@@ -193,7 +196,6 @@ class QRobot(QObject):
                 data['Лицо']['Эмоция'] = emotion
 
         # Распознавание рук и поз
-
         right_gesture = 0
         left_gesture = 0
 
@@ -216,14 +218,14 @@ class QRobot(QObject):
                     #print(f"{palm}: {gesture}")
 
         sceleton = {}
-        # pose_detection_result = self.pose_detector.detect(mp_image)
-        # pose_landmarks_list = pose_detection_result.pose_landmarks
-        # if pose_landmarks_list:
-        #     for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
-        #         lm = pose_landmarks_list[0][idx]
-        #         #if lm.visibility > 0.9:
-        #         sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
-        #                                                   'point': (int(lm.x * width), int(lm.y * height))}
+        pose_detection_result = self.pose_detector.detect(mp_image)
+        pose_landmarks_list = pose_detection_result.pose_landmarks
+        if pose_landmarks_list:
+            for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
+                lm = pose_landmarks_list[0][idx]
+                #if lm.visibility > 0.9:
+                sceleton[QRobot.POSE_LANDMARKS[i]] = {'x': lm.x, 'y': lm.y, 'z': lm.z,
+                                                      'point': (int(lm.x * width), int(lm.y * height))}
         if hand_landmarks_list:
             for idx, lm in enumerate(hand_landmarks_list):
                 is_right_palm = hand_detection_results.multi_handedness[idx].classification[0].label == 'Left'
