@@ -8,6 +8,37 @@ height = 768
 device = 17
 model = "../models/vosk-model-small-ru-0.22"
 samplerate = 44100
+min_command_confidence = 70
+
+[command.listen]
+phrases = [ 'анатолий', 'робот', 'слушай' ]
+
+[command.help]
+phrases = [ 'список команд', 'команды', 'что ты умеешь', 'твои навыки', 'навыки' ]
+
+[command.about]
+phrases = ['расскажи о себе', 'кто ты', 'ты кто', 'о себе']
+
+[command.hello]
+phrases = ['привет', 'здравствуй', 'здравствуйте', 'добрый день', 'доброе утро', 'добрый вечер']
+
+[command.bye]
+phrases = ['пока', 'до свидания', 'до встречи']
+
+[command.meet]
+phrases = ['знакомство', 'познакомимся', 'как тебя зовут', 'твое имя']
+
+[command.game]
+phrases = ['поиграем', 'игра', 'камень', 'ножницы', 'бумага', 'камень ножницы бумага']
+
+[command.yes]
+phrases = ['да', 'конечно', 'давай']
+
+[command.no]
+phrases = ['нет', 'не хочу']
+
+[command.objects]
+phrases = ['определи объект', 'угадай', 'что это']
 
 [models]
 gestures_model = "../models/камень_ножницы_бумага.mdl"

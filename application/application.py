@@ -42,6 +42,7 @@ class QRobotApplication(QApplication):
         self.voice = QRobotVoice()
         self.voice.moveToThread(self.voice_thread)
         self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
+        self.voice.command_recognized_signal.connect(self.on_command_recognized)
         self.voice_thread.started.connect(self.voice.listen)
         self.voice_thread.start()
 
@@ -58,6 +59,10 @@ class QRobotApplication(QApplication):
     @pyqtSlot(object)
     def on_phrase_captured(self, phrase):
         self.log_signal.emit(f"Услышал фразу: {phrase}", LogMessageType.STATUS)
+
+    @pyqtSlot(object)
+    def on_command_recognized(self, command):
+        self.log_signal.emit(f"Получена команда: {command}", LogMessageType.WARNING)
 
 if __name__ == "__main__":
     app = QRobotApplication(sys.argv)

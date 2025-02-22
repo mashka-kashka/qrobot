@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 import sounddevice as sd
+from fuzzywuzzy import fuzz
 import vosk
 import json
 import queue
@@ -9,6 +10,7 @@ import sys
 
 class QRobotVoice(QObject):
     phrase_captured_signal = pyqtSignal(object)
+    command_recognized_signal = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
@@ -20,6 +22,7 @@ class QRobotVoice(QObject):
             self.microphone = self.config["microphone"]["device"]
             self.model = vosk.Model(self.config["microphone"]["model"])
             self.samplerate = self.config["microphone"]["samplerate"]
+            self.min_command_confidence = self.config["microphone"]["min_command_confidence"]
 
     def callback(self, indata, frames, time, status):
         if status:
@@ -41,8 +44,24 @@ class QRobotVoice(QObject):
                         self.prev_phrase = None
                         print(f"Фраза: {phrase}")
                         self.phrase_captured_signal.emit(phrase)
+                        self.recognize_command(phrase)
                 else:
                     phrase = json.loads(rec.PartialResult())["partial"]
                     if phrase and phrase != self.prev_phrase:
                         self.prev_phrase = phrase
                         print(f"Отрывок фразы: {phrase}")
+
+    def recognize_command(self, cmd):
+        max_ratio = 0
+        res_command = None
+        commands = self.config["command"]
+        for command in commands:
+            phrases = commands[command]["phrases"]
+            for phrase in phrases:
+                ratio = fuzz.ratio(cmd, phrase)
+                if ratio > max_ratio:
+                    max_ratio = ratio
+                    res_command = command
+
+        if max_ratio >= self.min_command_confidence:
+            self.command_recognized_signal.emit(res_command)
