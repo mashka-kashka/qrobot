@@ -24,6 +24,9 @@ class QRobotApplication(QApplication):
         self.log_signal.emit(f"Начало работы на {platform.uname().system}", LogMessageType.STATUS)
         self.robot.show_frame_signal.connect(self.window.show_frame)
 
+    def stop(self):
+        self.robot.stop()
+
     def log(self, message, type = LogMessageType.STATUS):
         self.log_signal.emit(message, type)
 
