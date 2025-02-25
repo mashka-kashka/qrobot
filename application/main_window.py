@@ -28,7 +28,7 @@ class QRobotMainWindow(QMainWindow):
         servos_layout.addWidget(btn_reset_servos, 0, 0)
 
         self.sliders = []
-        self.servo_controller = app.servo_controller
+        self.servo_controller = app.robot.controller
         for id in range(self.servo_controller.get_servos_count()):
             channel, name, begin, end, neutral = self.servo_controller.get_servo_info(id)
             label = QLabel(name)
@@ -47,9 +47,6 @@ class QRobotMainWindow(QMainWindow):
             slider.setProperty("neutral", neutral)
             servos_layout.addWidget(slider, id + 1, 1)
             self.sliders.append(slider)
-
-        app = QtWidgets.QApplication.instance()
-        app.show_frame_signal.connect(self.show_frame)
 
     @pyqtSlot()
     def on_reset_servos(self):

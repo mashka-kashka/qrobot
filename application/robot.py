@@ -1,9 +1,10 @@
-import math
-
-import toml
-from PyQt6.QtCore import QObject, QPoint
+from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal,  pyqtSlot, QTimer
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
+from servo_controller import QServoController
+from log_message_type import LogMessageType
+from camera import QRobotCamera
+from voice import QRobotVoice
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.python.solutions import drawing_utils as mp_drawing
@@ -12,17 +13,18 @@ from mediapipe.python.solutions import hands as mp_hand_detector
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-import sounddevice as sd
 import numpy as np
 import pandas as pd
 import pickle
 import torch
-import time
-import os
 import random
+import math
+import toml
+import os
 
 
 class QRobot(QObject):
+    show_frame_signal = pyqtSignal(object)
 
     DEFAULT_MODE = 0
     GAME_MODE = 1
@@ -67,10 +69,10 @@ class QRobot(QObject):
     prev_emotion = -1
     prev_gesture = -1
 
-    def __init__(self, controller):
+    def __init__(self, app):
         super().__init__()
 
-        self.controller = controller
+        self.app = app
         self.mode = self.DEFAULT_MODE
 
         self.red_pen = QPen()
@@ -146,45 +148,54 @@ class QRobot(QObject):
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
 
-            # Модели для синтеза голоса
-            tts = self.config["tts"]
-            self.sample_rate = tts["sample_rate"]
-            self.speaker = tts["speaker"]
-            #torch.set_num_threads(8)  # количество задействованных потоков CPU
+        # Голос
+        self.voice_thread = QThread()
+        self.voice = QRobotVoice()
+        self.voice.moveToThread(self.voice_thread)
+        self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
+        self.voice.command_recognized_signal.connect(self.on_command_recognized)
+        self.voice_thread.started.connect(self.voice.listen)
+        self.voice_thread.start()
 
-            self.tts_model = torch.package.PackageImporter("../models/v4_ru.pt").load_pickle("tts_models", "model")
-            torch._C._jit_set_profiling_mode(False)
-            torch.set_grad_enabled(False)
-            self.tts_model.to(self.device)
+        # Контроллер сервоприводов
+        self.controller = QServoController()
 
-    def say(self, text):
-        audio = self.tts_model.apply_tts(ssml_text=f'<speak><prosody rate="slow">{text}</prosody></speak>', #text + "..",
-                                speaker=self.speaker,
-                                sample_rate=self.sample_rate,
-                                put_accent=True,
-                                put_yo=True)
-        #os.system(off_mic)  # глушим микрофон
-        sd.play(audio, self.sample_rate)
-        time.sleep((len(audio) / self.sample_rate) + 0.5)
-        sd.stop()
-        #os.system(on_mic)  # отключаем глушилку микрофона
-        del audio
+        # Камера
+        self.camera = QRobotCamera()
+        self.camera.frame_captured_signal.connect(self.on_frame_captured)
+        self.camera.start()
+        self.camera.get_frame() # Получение первого кадра
+
+    def stop(self):
+        self.camera.stop()
+
+    @pyqtSlot(object)
+    def on_frame_captured(self, frame):
+        frame, data = self.process_frame(frame)
+        self.show_frame_signal.emit(frame)
+        # Получение следующего кадра
+        QTimer.singleShot(10, self.camera.get_frame)
+
+    @pyqtSlot(str)
+    def on_phrase_captured(self, phrase):
+        self.app.log(f"Услышал фразу: {phrase}")
+
+    @pyqtSlot(str, str)
+    def on_command_recognized(self, command, phrase):
+        self.app.log(f"Получена команда: {command}")
+        self.process_command(command, phrase)
 
             # Обработка команды
     def process_command(self, command, phrase):
-        match command:
-            case 'hello':
-                self.cmd_hello()
-            case 'meet':
-                self.cmd_meet()
-            case _:
-                self.say(f"Не понял фразу {phrase}.")
+        pass
+        # match command:
+        #     case 'приветствие':
+        #         self.cmd_hello()
+        #     case 'знакомство':
+        #         self.cmd_acquaintance()
+        #     case _:
+        #         self.voice.say(f"Не понял фразу {phrase}.")
 
-    def cmd_hello(self):
-        self.say("Привет!")
-
-    def cmd_meet(self):
-        self.say("Меня зовут Анатолий. А как вас зовут?")
 
     # Обработка кадра
     def process_frame(self, image):
