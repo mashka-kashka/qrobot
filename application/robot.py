@@ -1,6 +1,8 @@
 from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal,  pyqtSlot, QTimer
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
+from pygments.lexer import words
+
 from servo_controller import QServoController
 from log_message_type import LogMessageType
 from camera import QRobotCamera
@@ -13,6 +15,7 @@ from mediapipe.python.solutions import hands as mp_hand_detector
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from fuzzywuzzy import fuzz
 import numpy as np
 import pandas as pd
 import pickle
@@ -68,6 +71,7 @@ class QRobot(QObject):
 
     prev_emotion = -1
     prev_gesture = -1
+    prev_command = None
 
     def __init__(self, app):
         super().__init__()
@@ -148,6 +152,10 @@ class QRobot(QObject):
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
 
+        # Имена
+        self.female_names = set(line.strip().lower() for line in open('female_names_rus.txt'))
+        self.male_names = set(line.strip().lower() for line in open('male_names_rus.txt'))
+
         # Голос
         self.voice_thread = QThread()
         self.voice = QRobotVoice()
@@ -176,26 +184,58 @@ class QRobot(QObject):
         # Получение следующего кадра
         QTimer.singleShot(10, self.camera.get_frame)
 
+    # Определение имени по фразе
+    def detect_name(self, phrase):
+        name = phrase.split()[-1]
+        if name in self.female_names:
+            return name, True
+        if name in self.male_names:
+            return name, False
+        return None, None
+
     @pyqtSlot(str)
     def on_phrase_captured(self, phrase):
         self.app.log(f"Услышал фразу: {phrase}")
 
+        if self.prev_command == 'знакомство': # Определяем имя
+            words = phrase.split()
+            self.username, self.is_user_female = self.detect_name(phrase)
+            if self.username:
+                self.voice.say(f'Приятно познакомиться, {self.username}')
+                self.prev_command = 'определено имя'
+            elif len(words) == 1:
+                self.username = words[0]
+                self.is_user_female = None
+                self.prev_command = 'уточнение имени'
+                self.voice.say(f'Вас зовут {self.username}?')
+            else:
+                self.prev_command = 'знакомство'
+                self.voice.say(f'Извините, не расслышал ваше имя.')
+
     @pyqtSlot(str, str)
     def on_command_recognized(self, command, phrase):
         self.app.log(f"Получена команда: {command}")
-        self.process_command(command, phrase)
 
-            # Обработка команды
-    def process_command(self, command, phrase):
-        pass
-        # match command:
-        #     case 'приветствие':
-        #         self.cmd_hello()
+        match command:
+             case 'да':
+                 if self.prev_command == 'уточнение имени':
+                     self.prev_command = 'определено имя'
+                     self.voice.say(f'Приятно познакомиться, {self.username}')
+                     return
+             case 'нет':
+                 if self.prev_command == 'уточнение имени':
+                     self.username = None
+                     self.prev_command = 'знакомство'
+                     self.voice.say(f'А как вас зовут?')
+                     return
+
+#                 self.cmd_hello()
         #     case 'знакомство':
         #         self.cmd_acquaintance()
         #     case _:
         #         self.voice.say(f"Не понял фразу {phrase}.")
 
+        self.prev_command = command
 
     # Обработка кадра
     def process_frame(self, image):
