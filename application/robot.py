@@ -1,10 +1,8 @@
-from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal,  pyqtSlot, QTimer
+from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer, QRectF
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
-from pygments.lexer import words
 
 from servo_controller import QServoController
-from log_message_type import LogMessageType
 from camera import QRobotCamera
 from voice import QRobotVoice
 import mediapipe as mp
@@ -15,7 +13,6 @@ from mediapipe.python.solutions import hands as mp_hand_detector
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from fuzzywuzzy import fuzz
 import numpy as np
 import pandas as pd
 import pickle
@@ -31,6 +28,7 @@ class QRobot(QObject):
 
     DEFAULT_MODE = 0
     GAME_MODE = 1
+    OBJECT_MODE = 2
 
     FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
                         'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
@@ -86,6 +84,7 @@ class QRobot(QObject):
         self.green_pen.setWidth(5)
         self.green_pen.setColor(QColor(0, 200, 0))
         self.emoji_font = QFont("Noto Color Emoji", 64)
+        self.label_font = QFont("Courier", 64)
         self.robot_data = {}
         self.servo_values = np.zeros(32)
 
@@ -151,6 +150,24 @@ class QRobot(QObject):
             model_file = open(emotions_model_filename, 'rb')
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
+
+        # Модель распознавания объектов
+        base_options = python.BaseOptions(model_asset_path='../models/efficientdet_lite0.tflite')
+        options = vision.ObjectDetectorOptions(base_options=base_options,
+                                               score_threshold=0.6,
+                                               max_results = 3,
+                                               category_denylist = ['person'])
+        self.object_detector = vision.ObjectDetector.create_from_options(options)
+
+        self.prev_object = None # Предыдущий объект
+
+        # Наименования объектов
+        self.object_labels = {}
+        with open('../models/labelmap.txt') as file:
+            for line in file:
+                label = line.split(':')
+                if len(label) == 2: # Есть перевод
+                    self.object_labels[label[0].strip()] = label[1].strip()
 
         # Имена
         self.female_names = set(line.strip().lower() for line in open('female_names_rus.txt'))
@@ -228,7 +245,8 @@ class QRobot(QObject):
                      self.prev_command = 'знакомство'
                      self.voice.say(f'А как вас зовут?')
                      return
-
+             case 'определи':
+                 self.mode = self.OBJECT_MODE
 #                 self.cmd_hello()
         #     case 'знакомство':
         #         self.cmd_acquaintance()
@@ -269,7 +287,36 @@ class QRobot(QObject):
             for idx, lm in enumerate(hand_landmarks_list):
                 bounds = self.get_ranges(lm.landmark, width, height)
                 classification = hand_detection_results.multi_handedness[idx].classification[0]
-                palm = "Правая ладонь" if classification.label == 'Left' else "Левая ладонь"
+                palm = "Левая ладонь"
+                if classification.label == 'Left':
+                    palm = "Правая ладонь"
+                    if self.mode == self.OBJECT_MODE: # Нужно определить предмет возле правой руки
+                        rect = bounds['rect']
+                        object = {}
+                        min_dist = None
+                        # Определяем центр правой ладони на изображении
+                        pcx = (rect[0] - rect[2]) / 2
+                        pcy = (rect[1] - rect[3]) / 3
+                        detection_result = self.object_detector.detect(mp_image)
+                        for detection in detection_result.detections:
+                            category = detection.categories[0].category_name
+                            translation = self.object_labels.get(category)
+                            if translation is None: # Нет перевода названия
+                                continue
+                            bbox = detection.bounding_box
+                            # Определяем центр объекта на изображении
+                            ocx = bbox.origin_x + bbox.width / 2
+                            ocy = bbox.origin_y + bbox.height / 2
+                            dist = (pcx - ocx) * (pcx - ocx) + (pcy - ocy) * (pcy - ocy)
+                            if min_dist == None or min_dist > dist:
+                                min_dist = dist
+                                object = {'bbox': bbox, 'category': translation}
+                        if bool(object):
+                            data['object'] = object
+                            category = object['category']
+                            if category != self.prev_object:  # Ещё не называли
+                                self.prev_object = category
+                                self.voice.say(object['category'])
                 data[palm] = bounds
                 score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
                 gesture = self.detect_gesture(lm.landmark, bounds, score)
@@ -347,6 +394,7 @@ class QRobot(QObject):
         annotated_image = self.draw_sceleton_on_image(annotated_image, data)
         annotated_image = self.draw_emotion_on_image(annotated_image, data)
         annotated_image = self.draw_gestures_on_image(annotated_image, data)
+        annotated_image = self.draw_object_on_image(annotated_image, data)
 
         return annotated_image, data
 
@@ -589,6 +637,24 @@ class QRobot(QObject):
             except:
                 pass
 
+        painter.end()
+        return image
+
+    def draw_object_on_image(self, image, data):
+        obj = data.get('object')
+        if obj == None:
+            return image
+
+        bbox = obj['bbox']
+        x = bbox.origin_x
+        y = bbox.origin_y
+        w = bbox.width
+        h = bbox.height
+        painter = QPainter(image)
+        painter.setFont(self.label_font)
+        painter.setPen(self.red_pen)
+        painter.drawRect(QRectF(x, y, w, h))
+        painter.drawText(QPoint(x, y - 30), obj['category'])
         painter.end()
         return image
 
