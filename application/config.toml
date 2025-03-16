@@ -1,11 +1,13 @@
 [camera]
 index = 0
-format = "RGB888"
+#format = "RGB888"
+format = "BGR888"
 width = 1024
 height = 768
 
 [microphone]
-device = 17
+#device = 17
+device = 4
 model = "../models/vosk-model-small-ru-0.22"
 samplerate = 44100
 min_command_confidence = 70
@@ -34,6 +36,11 @@ reply = "Здравствуйте"
 name = 'прощание'
 activation = ['пока', 'до свидания', 'до встречи']
 reply = "До свидания"
+
+[command.cancel]
+name = 'отмена'
+activation = ['отмена', 'хватит', 'стоп', 'сброс']
+reply = "Хорошо"
 
 [command.acquaintance]
 name = 'знакомство'
@@ -93,7 +100,7 @@ name = "Поворот правого плеча"
 [servos.17]
 begin = 500
 end = 2500
-neutral = 500
+neutral = 1550
 name = "Подъём правого плеча"
 
 [servos.23]

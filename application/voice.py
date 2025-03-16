@@ -13,6 +13,7 @@ import time
 class QRobotVoice(QObject):
     phrase_captured_signal = pyqtSignal(str)
     command_recognized_signal = pyqtSignal(str, str)
+    say_finished_signal = pyqtSignal()
     mute_mic = False
 
     def __init__(self):
@@ -89,15 +90,18 @@ class QRobotVoice(QObject):
             if "reply" in command.keys():
                 self.say(command["reply"])
 
+    @pyqtSlot(str)
     def say(self, text):
+        print(f"Произношу фразу: {text}")
+        self.mute_mic = True # глушим микрофон
         audio = self.tts_model.apply_tts(ssml_text=f'<speak><prosody rate="slow">{text}</prosody></speak>', #text + "..",
                                 speaker=self.speaker,
                                 sample_rate=self.sample_rate,
                                 put_accent=True,
                                 put_yo=True)
-        self.mute_mic = True # глушим микрофон
         sd.play(audio, self.sample_rate)
         time.sleep((len(audio) / self.sample_rate) + 0.5)
         sd.stop()
         del audio
         self.mute_mic = False  # отключаем глушилку микрофона
+        self.say_finished_signal.emit()

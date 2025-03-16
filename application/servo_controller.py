@@ -1,9 +1,10 @@
-from PyQt6.QtCore import QObject, QTimer
+from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 from PyQt6.QtCore import pyqtSlot
 import toml
 import serial
 
 class QServoController(QObject):
+    command_finished_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -117,3 +118,4 @@ class QServoController(QObject):
         if self.controller:
             self.controller.write(command.encode("utf-8"))
             print(f"Выполнение команды: {command}")
+            self.command_finished_signal.emit()

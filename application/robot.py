@@ -1,7 +1,6 @@
 from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer, QRectF
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
-
 from servo_controller import QServoController
 from camera import QRobotCamera
 from voice import QRobotVoice
@@ -13,6 +12,7 @@ from mediapipe.python.solutions import hands as mp_hand_detector
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from enum import Enum
 import numpy as np
 import pandas as pd
 import pickle
@@ -23,12 +23,22 @@ import toml
 import os
 
 
+class RobotMode(Enum):  # Режимы работы робота
+    DEFAULT = 'Стандартный режим'
+    START_GAME = 'Начало раунда игры'
+    FINISH_GAME = 'Завершение раунда игры'
+    DETECT_OBJECT = 'Определение объекта'
+    
+class GameGesture(Enum):
+    ROCK = 'камень'
+    SCISSORS = 'ножницы'
+    PAPER = 'бумага'
+    
 class QRobot(QObject):
     show_frame_signal = pyqtSignal(object)
-
-    DEFAULT_MODE = 0
-    GAME_MODE = 1
-    OBJECT_MODE = 2
+    say_phrase_signal = pyqtSignal(str)
+    start_game_signal = pyqtSignal()
+    finish_game_signal = pyqtSignal()
 
     FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
                         'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
@@ -67,15 +77,16 @@ class QRobot(QObject):
                       [43, 47, 49, 51, 53, 55, 51], [42, 46, 48, 50, 52, 54, 50], [46, 47]])
     ARM_PREFIXES   =  ['LEFT_', 'RIGHT_']
 
-    prev_emotion = -1
-    prev_gesture = -1
-    prev_command = None
+    prev_emotion = -1 # Эмоция игрока
+    prev_gamer_gesture = None # Жест игрока
+    prev_robot_gesture = None # Жест робота
+    prev_command = None # Предыдущая голосовая команда
 
     def __init__(self, app):
         super().__init__()
 
         self.app = app
-        self.mode = self.DEFAULT_MODE
+        self.mode = RobotMode.DEFAULT
 
         self.red_pen = QPen()
         self.red_pen.setWidth(5)
@@ -179,17 +190,24 @@ class QRobot(QObject):
         self.voice.moveToThread(self.voice_thread)
         self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
         self.voice.command_recognized_signal.connect(self.on_command_recognized)
+        self.voice.say_finished_signal.connect(self.on_say_finished)
+        self.say_phrase_signal.connect(self.voice.say)
         self.voice_thread.started.connect(self.voice.listen)
         self.voice_thread.start()
 
         # Контроллер сервоприводов
         self.controller = QServoController()
+        self.controller.command_finished_signal.connect(self.on_controller_command_finished)
 
         # Камера
         self.camera = QRobotCamera()
         self.camera.frame_captured_signal.connect(self.on_frame_captured)
         self.camera.start()
         self.camera.get_frame() # Получение первого кадра
+        
+        # Игра
+        self.start_game_signal.connect(self.start_game)
+        self.finish_game_signal.connect(self.finish_game)
 
     def stop(self):
         self.camera.stop()
@@ -234,27 +252,150 @@ class QRobot(QObject):
         self.app.log(f"Получена команда: {command}")
 
         match command:
-             case 'да':
-                 if self.prev_command == 'уточнение имени':
-                     self.prev_command = 'определено имя'
-                     self.voice.say(f'Приятно познакомиться, {self.username}')
-                     return
-             case 'нет':
-                 if self.prev_command == 'уточнение имени':
-                     self.username = None
-                     self.prev_command = 'знакомство'
-                     self.voice.say(f'А как вас зовут?')
-                     return
-             case 'определи':
-                 self.mode = self.OBJECT_MODE
-#                 self.cmd_hello()
-        #     case 'знакомство':
-        #         self.cmd_acquaintance()
-        #     case _:
-        #         self.voice.say(f"Не понял фразу {phrase}.")
+            case 'да':
+                match self.prev_command:
+                    case 'уточнение имени':
+                        self.prev_command = 'определено имя'
+                        self.voice.say(f'Приятно познакомиться, {self.username}')
+                        return
+                    case 'игра':
+                        self.start_game_signal.emit()
+                        
+            case 'нет':
+                match self.prev_command:
+                    case 'уточнение имени':
+                        self.username = None
+                        self.prev_command = 'знакомство'
+                        self.voice.say(f'А как вас зовут?')
+                        return
+                    case 'игра':
+                        self.mode = RobotMode.DEFAULT
+                        
+            case 'отмена':
+                self.mode = RobotMode.DEFAULT
+                self.controller.set_servo_position(14, 1500)
+                self.controller.set_servo_position(17, 1500)
+                self.controller.set_servo_position(23, 1500)
+                self.show_paper()
+                
+            case 'определи':
+                self.mode = RobotMode.DETECT_OBJECT
 
         self.prev_command = command
 
+    @pyqtSlot()
+    def start_game(self):
+        self.app.log(f"Начинаю игру")
+        self.mode = RobotMode.START_GAME
+        
+        self.controller.set_servo_position(14, 2500)
+        self.controller.set_servo_position(17, 1700)
+        self.controller.set_servo_position(23, 1800)
+        
+    @pyqtSlot()
+    def finish_game(self):
+        if self.prev_gamer_gesture not in {GameGesture.ROCK, 
+                                           GameGesture.SCISSORS,
+                                           GameGesture.PAPER}:
+            #self.voice.say('Покажите камень, ножницы или бумагу')                                   
+            return
+
+        self.app.log(f"Завершение раунда игры. "
+        "Жест робота: {self.prev_robot_gesture.value} "
+        "Жест игрока: {self.prev_gamer_gesture.value} ")
+                    
+        # Дальше запустим следующий раунд игры
+        #self.mode = RobotMode.START_GAME
+        self.mode = RobotMode.DEFAULT
+        if self.prev_gamer_gesture == self.prev_robot_gesture:
+            self.app.log('Ничья')
+            self.voice.say('Ничья')
+        else:
+            if ((self.prev_gamer_gesture == GameGesture.ROCK and 
+                self.prev_robot_gesture == GameGesture.SCISSORS) or 
+                (self.prev_gamer_gesture == GameGesture.SCISSORS and 
+                self.prev_robot_gesture == GameGesture.PAPER) or 
+                (self.prev_gamer_gesture == GameGesture.PAPER and 
+                self.prev_robot_gesture == GameGesture.ROCK)):
+                self.app.log('Игрок победил')
+                self.voice.say('Вы выиграли')    
+            else:
+                self.app.log('Игрок проиграл')
+                self.voice.say('Я победил')    
+    
+    # Завершилось перемещение сервоприводов
+    @pyqtSlot()       
+    def on_controller_command_finished(self):
+        self.app.log(f"Завершено перемещение сервоприводов. Режим: {self.mode.value}")
+        match self.mode:
+            case RobotMode.START_GAME:
+                self.voice.say('Камень, ножницы, бумага. Раз, два, три.')
+               # Продолжим после завершения произнесения фразы
+            case RobotMode.FINISH_GAME:
+                self.finish_game_signal.emit()
+                
+    # Завершилось произнесение фразы
+    @pyqtSlot()    
+    def on_say_finished(self):
+        self.app.log(f"Завершено произнесение фразы. Режим: {self.mode.value}")
+        match self.mode:
+            case RobotMode.START_GAME:
+                # Далее нужно завершить раунд игры
+                self.mode = RobotMode.FINISH_GAME
+                robot_gesture = random.choice(list(GameGesture))
+                if self.prev_emotion == 12: # 🙁
+                    # Человек расстроен - надо подыграть
+                    match self.prev_gamer_gesture:
+                        case GameGesture.PAPER:
+                            robot_gesture = GameGesture.ROCK
+                        case GameGesture.SCISSORS:
+                            robot_gesture = GameGesture.PAPER
+                        case GameGesture.ROCK:
+                            robot_gesture = GameGesture.SCISSORS
+                        case _: # Неверный жест
+                            self.mode = RobotMode.START_GAME
+                            self.app.log(f"Неверный жест")
+                            self.voice.say('Давайте переиграем')
+                            return 
+                
+                #self.app.log(f"Вижу {self.prev_gamer_gesture.value} - " 
+                #             f"показываю {robot_gesture.value}")
+
+                match robot_gesture:
+                    case GameGesture.PAPER:
+                        self.show_paper()
+                    case GameGesture.SCISSORS:
+                        self.show_scissors()
+                    case GameGesture.ROCK:
+                        self.show_rock()
+
+    def show_rock(self):
+        self.app.log(f"Показываю камень")
+        self.prev_robot_gesture = GameGesture.ROCK
+        self.controller.set_servo_position(22, 1200)
+        self.controller.set_servo_position(21, 1100)
+        self.controller.set_servo_position(24, 1900)
+        self.controller.set_servo_position(26, 1800)
+        self.controller.set_servo_position(25, 1700)
+
+    def show_scissors(self):
+        self.app.log(f"Показываю ножницы")
+        self.prev_robot_gesture = GameGesture.SCISSORS
+        self.controller.set_servo_position(22, 1200)
+        self.controller.set_servo_position(21, 1100)
+        self.controller.set_servo_position(24, 1300)
+        self.controller.set_servo_position(26, 1400)
+        self.controller.set_servo_position(25, 1700)
+
+    def show_paper(self):
+        self.app.log(f"Показываю бумагу")
+        self.prev_robot_gesture = GameGesture.PAPER
+        self.controller.set_servo_position(22, 1500)
+        self.controller.set_servo_position(21, 1500)
+        self.controller.set_servo_position(24, 1300)
+        self.controller.set_servo_position(26, 1400)
+        self.controller.set_servo_position(25, 1400)
+                
     # Обработка кадра
     def process_frame(self, image):
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
@@ -278,8 +419,8 @@ class QRobot(QObject):
                 data['Лицо']['Эмоция'] = emotion
 
         # Распознавание рук и поз
-        right_gesture = 0
-        left_gesture = 0
+        right_gesture = None
+        left_gesture = None
 
         hand_detection_results = self.hand_detector.process(image)
         hand_landmarks_list = hand_detection_results.multi_hand_landmarks
@@ -290,7 +431,7 @@ class QRobot(QObject):
                 palm = "Левая ладонь"
                 if classification.label == 'Left':
                     palm = "Правая ладонь"
-                    if self.mode == self.OBJECT_MODE: # Нужно определить предмет возле правой руки
+                    if self.mode == RobotMode.DETECT_OBJECT: # Нужно определить предмет возле правой руки
                         rect = bounds['rect']
                         object = {}
                         min_dist = None
@@ -348,44 +489,22 @@ class QRobot(QObject):
                     else:
                         sceleton['LEFT_' + QRobot.HAND_LANDMARKS[pidx]] = {'x': pt.x, 'y': pt.y, 'z': pt.z,
                                                                            'point': (int(pt.x * width),
+                      
                                                                                      int(pt.y * height))}
-        if self.mode == self.GAME_MODE:
-            if right_gesture == 1 and left_gesture == 1:  # ✋ + ✋
-                print(f"Сброс")
-                self.mode = self.DEFAULT_MODE
-                self.controller.set_servo_position(19, 0)
-                self.controller.set_servo_position(18, 1500)
-                self.controller.set_servo_position(20, 0)
-            else:
-                if (emotion != self.prev_emotion or left_gesture != self.prev_gesture):
-                    self.prev_emotion = emotion
-                    self.prev_gesture = left_gesture
-
-                    if emotion == 12: # 🙁,Слегка нахмуренное лицо
-                        if left_gesture == 1:  # Бумага
-                            self.show_rock()
-                        elif left_gesture == 7:  # Ножницы
-                            self.show_paper()
-                        elif left_gesture == 26:  # Камень
-                            self.show_scissors()
-                    else:
-                        random_num = random.randint(0, 3)
-                        if random_num == 0:    # Бумага
-                             self.show_rock()
-                        elif random_num == 1:  # Ножницы
-                             self.show_paper()
-                        elif random_num == 2:  # Камень
-                             self.show_scissors()
-        else:
-            if right_gesture == 7 and left_gesture == 7:  # ✌ + ✌
-                print(f"Переключение в режим игры")
-                self.mode = self.GAME_MODE
-                self.controller.set_servo_position(19, 1700)
-                self.controller.set_servo_position(18, 2500)
-                self.controller.set_servo_position(20, 1800)
-            else:
-                # Расчеты по скелету
-                self.calc_sceleton(sceleton)
+        self.prev_emotion = emotion
+        if self.prev_gamer_gesture is None:
+            match left_gesture:
+                case 0:
+                    self.prev_gamer_gesture = GameGesture.PAPER
+                case 1:
+                    self.prev_gamer_gesture = GameGesture.SCISSORS
+                case 2:
+                    self.prev_gamer_gesture = GameGesture.ROCK
+                case _:
+                    self.prev_gamer_gesture = None
+    
+        if self.mode == RobotMode.FINISH_GAME:
+            self.finish_game()
 
         data['Скелет'] = sceleton
 #        with open("sceleton.json", "w") as outfile:
@@ -426,27 +545,6 @@ class QRobot(QObject):
                     'z_min': z_min, 'z_max': z_max, 'dz': z_max - z_min,
                     'rect': (int(x_min * width), int(y_min * height), int(x_max * width), int(y_max * height))}
         return data
-
-    def show_rock(self):
-        self.controller.set_servo_position(25, 1200)
-        self.controller.set_servo_position(24, 1700)
-        self.controller.set_servo_position(22, 1650)
-        self.controller.set_servo_position(23, 1200)
-        self.controller.set_servo_position(21, 1250)
-
-    def show_scissors(self):
-        self.controller.set_servo_position(25, 1200)
-        self.controller.set_servo_position(24, 1100)
-        self.controller.set_servo_position(22, 1200)
-        self.controller.set_servo_position(23, 1200)
-        self.controller.set_servo_position(21, 1250)
-
-    def show_paper(self):
-        self.controller.set_servo_position(25, 1200)
-        self.controller.set_servo_position(24, 1100)
-        self.controller.set_servo_position(22, 1200)
-        self.controller.set_servo_position(23, 1500)
-        self.controller.set_servo_position(21, 1500)
 
     def calc_sceleton(self, sceleton):
 
