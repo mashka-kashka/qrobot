@@ -23,6 +23,8 @@ class QServoController(QObject):
 
         self.positions = {}
         self.servos = None
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
         with open('config.toml', 'r') as f:
             self.config = toml.load(f)
             self.servos = self.config["servos"]
@@ -118,4 +120,8 @@ class QServoController(QObject):
         if self.controller:
             self.controller.write(command.encode("utf-8"))
             print(f"Выполнение команды: {command}")
-            self.command_finished_signal.emit()
+            self.timer.singleShot(500, self.on_command_finished)
+
+    @pyqtSlot()
+    def on_command_finished(self):
+        self.command_finished_signal.emit()

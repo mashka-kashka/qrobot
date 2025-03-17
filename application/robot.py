@@ -1,9 +1,10 @@
 from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer, QRectF
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
+
 from servo_controller import QServoController
 from camera import QRobotCamera
-from voice import QRobotVoice
+from voice import QRobotListener, QRobotSpeaker
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.python.solutions import drawing_utils as mp_drawing
@@ -36,9 +37,6 @@ class GameGesture(Enum):
     
 class QRobot(QObject):
     show_frame_signal = pyqtSignal(object)
-    say_phrase_signal = pyqtSignal(str)
-    start_game_signal = pyqtSignal()
-    finish_game_signal = pyqtSignal()
 
     FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
                         'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
@@ -80,7 +78,7 @@ class QRobot(QObject):
     prev_emotion = -1 # Эмоция игрока
     prev_gamer_gesture = None # Жест игрока
     prev_robot_gesture = None # Жест робота
-    prev_command = None # Предыдущая голосовая команда
+    prev_command_name = None # Предыдущая голосовая команда
 
     def __init__(self, app):
         super().__init__()
@@ -98,6 +96,9 @@ class QRobot(QObject):
         self.label_font = QFont("Courier", 64)
         self.robot_data = {}
         self.servo_values = np.zeros(32)
+
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
 
         # Список наименований ключевых точек
         QRobot.ROBOT_LANDMARKS = []
@@ -184,16 +185,17 @@ class QRobot(QObject):
         self.female_names = set(line.strip().lower() for line in open('female_names_rus.txt'))
         self.male_names = set(line.strip().lower() for line in open('male_names_rus.txt'))
 
-        # Голос
-        self.voice_thread = QThread()
-        self.voice = QRobotVoice()
-        self.voice.moveToThread(self.voice_thread)
-        self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
-        self.voice.command_recognized_signal.connect(self.on_command_recognized)
-        self.voice.say_finished_signal.connect(self.on_say_finished)
-        self.say_phrase_signal.connect(self.voice.say)
-        self.voice_thread.started.connect(self.voice.listen)
-        self.voice_thread.start()
+        # Модуль распознавания речи
+        self.listener_thread = QThread()
+        self.listener = QRobotListener()
+        self.listener.moveToThread(self.listener_thread)
+        self.listener.phrase_captured_signal.connect(self.on_phrase_captured)
+        self.listener.command_recognized_signal.connect(self.on_command_recognized)
+        self.listener_thread.started.connect(self.listener.listen)
+        self.listener_thread.start()
+
+        # Модуль генерации речи
+        self.speaker = QRobotSpeaker()
 
         # Контроллер сервоприводов
         self.controller = QServoController()
@@ -205,10 +207,6 @@ class QRobot(QObject):
         self.camera.start()
         self.camera.get_frame() # Получение первого кадра
         
-        # Игра
-        self.start_game_signal.connect(self.start_game)
-        self.finish_game_signal.connect(self.finish_game)
-
     def stop(self):
         self.camera.stop()
 
@@ -228,45 +226,55 @@ class QRobot(QObject):
             return name, False
         return None, None
 
+    def say(self, text):
+#        self.listener.mute(True)
+        self.speaker.say(text)
+#        self.listener.mute(False)
+
     @pyqtSlot(str)
     def on_phrase_captured(self, phrase):
         self.app.log(f"Услышал фразу: {phrase}")
 
-        if self.prev_command == 'знакомство': # Определяем имя
+        if self.prev_command_name == 'знакомство': # Определяем имя
             words = phrase.split()
             self.username, self.is_user_female = self.detect_name(phrase)
             if self.username:
-                self.voice.say(f'Приятно познакомиться, {self.username}')
-                self.prev_command = 'определено имя'
+                self.say(f'Приятно познакомиться, {self.username}')
+                self.prev_command_name = 'определено имя'
             elif len(words) == 1:
                 self.username = words[0]
                 self.is_user_female = None
-                self.prev_command = 'уточнение имени'
-                self.voice.say(f'Вас зовут {self.username}?')
+                self.prev_command_name = 'уточнение имени'
+                self.say(f'Вас зовут {self.username}?')
             else:
-                self.prev_command = 'знакомство'
-                self.voice.say(f'Извините, не расслышал ваше имя.')
+                self.prev_command_name = 'знакомство'
+                self.say(f'Извините, не расслышал ваше имя.')
 
     @pyqtSlot(str, str)
-    def on_command_recognized(self, command, phrase):
-        self.app.log(f"Получена команда: {command}")
+    def on_command_recognized(self, command_id, phrase):
+        command = self.config["command"][command_id]
+        command_name = command["name"]
+        self.app.log(f"Получена команда: {command_name}")
+        if "reply" in command.keys():
+            self.prev_command_name = command_name
+            self.say(command["reply"])
 
-        match command:
+        match command_name:
             case 'да':
-                match self.prev_command:
+                match self.prev_command_name:
                     case 'уточнение имени':
-                        self.prev_command = 'определено имя'
-                        self.voice.say(f'Приятно познакомиться, {self.username}')
+                        self.prev_command_name = 'определено имя'
+                        self.say(f'Приятно познакомиться, {self.username}')
                         return
                     case 'игра':
-                        self.start_game_signal.emit()
+                        self.start_game()
                         
             case 'нет':
-                match self.prev_command:
+                match self.prev_command_name:
                     case 'уточнение имени':
                         self.username = None
-                        self.prev_command = 'знакомство'
-                        self.voice.say(f'А как вас зовут?')
+                        self.prev_command_name = 'знакомство'
+                        self.say(f'А как вас зовут?')
                         return
                     case 'игра':
                         self.mode = RobotMode.DEFAULT
@@ -281,7 +289,7 @@ class QRobot(QObject):
             case 'определи':
                 self.mode = RobotMode.DETECT_OBJECT
 
-        self.prev_command = command
+        self.prev_command_name = command_name
 
     @pyqtSlot()
     def start_game(self):
@@ -294,80 +302,67 @@ class QRobot(QObject):
         
     @pyqtSlot()
     def finish_game(self):
-        if self.prev_gamer_gesture not in {GameGesture.ROCK, 
-                                           GameGesture.SCISSORS,
-                                           GameGesture.PAPER}:
-            #self.voice.say('Покажите камень, ножницы или бумагу')                                   
-            return
+        robot_gesture = random.choice(list(GameGesture))
+        if self.prev_emotion == 12:  # 🙁
+            # Человек расстроен - надо подыграть
+            match self.prev_gamer_gesture:
+                case GameGesture.PAPER:
+                    robot_gesture = GameGesture.ROCK
+                case GameGesture.SCISSORS:
+                    robot_gesture = GameGesture.PAPER
+                case GameGesture.ROCK:
+                    robot_gesture = GameGesture.SCISSORS
+                case _:  # Неверный жест
+                    self.mode = RobotMode.START_GAME
+                    self.app.log(f"Неверный жест")
+                    self.say('Давайте переиграем')
+                    return
 
-        self.app.log(f"Завершение раунда игры. "
-        "Жест робота: {self.prev_robot_gesture.value} "
-        "Жест игрока: {self.prev_gamer_gesture.value} ")
-                    
-        # Дальше запустим следующий раунд игры
-        #self.mode = RobotMode.START_GAME
-        self.mode = RobotMode.DEFAULT
-        if self.prev_gamer_gesture == self.prev_robot_gesture:
-            self.app.log('Ничья')
-            self.voice.say('Ничья')
-        else:
-            if ((self.prev_gamer_gesture == GameGesture.ROCK and 
-                self.prev_robot_gesture == GameGesture.SCISSORS) or 
-                (self.prev_gamer_gesture == GameGesture.SCISSORS and 
-                self.prev_robot_gesture == GameGesture.PAPER) or 
-                (self.prev_gamer_gesture == GameGesture.PAPER and 
-                self.prev_robot_gesture == GameGesture.ROCK)):
-                self.app.log('Игрок победил')
-                self.voice.say('Вы выиграли')    
-            else:
-                self.app.log('Игрок проиграл')
-                self.voice.say('Я победил')    
-    
+        self.app.log(f"Вижу {self.prev_gamer_gesture.value} - "
+                     f"показываю {robot_gesture.value}")
+
+        match robot_gesture:
+            case GameGesture.PAPER:
+                self.show_paper()
+            case GameGesture.SCISSORS:
+                self.show_scissors()
+            case GameGesture.ROCK:
+                self.show_rock()
+
     # Завершилось перемещение сервоприводов
     @pyqtSlot()       
     def on_controller_command_finished(self):
         self.app.log(f"Завершено перемещение сервоприводов. Режим: {self.mode.value}")
         match self.mode:
             case RobotMode.START_GAME:
-                self.voice.say('Камень, ножницы, бумага. Раз, два, три.')
-               # Продолжим после завершения произнесения фразы
-            case RobotMode.FINISH_GAME:
-                self.finish_game_signal.emit()
-                
-    # Завершилось произнесение фразы
-    @pyqtSlot()    
-    def on_say_finished(self):
-        self.app.log(f"Завершено произнесение фразы. Режим: {self.mode.value}")
-        match self.mode:
-            case RobotMode.START_GAME:
-                # Далее нужно завершить раунд игры
+                self.say('Камень, ножницы, бумага. Раз, два, три.')
                 self.mode = RobotMode.FINISH_GAME
-                robot_gesture = random.choice(list(GameGesture))
-                if self.prev_emotion == 12: # 🙁
-                    # Человек расстроен - надо подыграть
-                    match self.prev_gamer_gesture:
-                        case GameGesture.PAPER:
-                            robot_gesture = GameGesture.ROCK
-                        case GameGesture.SCISSORS:
-                            robot_gesture = GameGesture.PAPER
-                        case GameGesture.ROCK:
-                            robot_gesture = GameGesture.SCISSORS
-                        case _: # Неверный жест
-                            self.mode = RobotMode.START_GAME
-                            self.app.log(f"Неверный жест")
-                            self.voice.say('Давайте переиграем')
-                            return 
-                
-                #self.app.log(f"Вижу {self.prev_gamer_gesture.value} - " 
-                #             f"показываю {robot_gesture.value}")
+                self.prev_gamer_gesture = None
+            case RobotMode.FINISH_GAME:
+                self.app.log(f"Завершение раунда игры. "
+                             f"Жест робота: {self.prev_robot_gesture.value} "
+                             f"Жест игрока: {self.prev_gamer_gesture.value} ")
 
-                match robot_gesture:
-                    case GameGesture.PAPER:
-                        self.show_paper()
-                    case GameGesture.SCISSORS:
-                        self.show_scissors()
-                    case GameGesture.ROCK:
-                        self.show_rock()
+                if self.prev_gamer_gesture == self.prev_robot_gesture:
+                    self.app.log('Ничья')
+                    self.say('Ничья')
+                else:
+                    if ((self.prev_gamer_gesture == GameGesture.ROCK and
+                         self.prev_robot_gesture == GameGesture.SCISSORS) or
+                            (self.prev_gamer_gesture == GameGesture.SCISSORS and
+                             self.prev_robot_gesture == GameGesture.PAPER) or
+                            (self.prev_gamer_gesture == GameGesture.PAPER and
+                             self.prev_robot_gesture == GameGesture.ROCK)):
+                        self.app.log('Игрок победил')
+                        self.say('Вы выиграли')
+                    else:
+                        self.app.log('Игрок проиграл')
+                        self.say('Я победил')
+
+                self.mode = RobotMode.DEFAULT
+
+                # Следующий раунд через секунду
+                self.timer.singleShot(3000, self.start_game)
 
     def show_rock(self):
         self.app.log(f"Показываю камень")
@@ -457,7 +452,7 @@ class QRobot(QObject):
                             category = object['category']
                             if category != self.prev_object:  # Ещё не называли
                                 self.prev_object = category
-                                self.voice.say(object['category'])
+                                self.say(object['category'])
                 data[palm] = bounds
                 score = MessageToDict(hand_detection_results.multi_handedness[idx])['classification'][0]['score']
                 gesture = self.detect_gesture(lm.landmark, bounds, score)
@@ -494,16 +489,16 @@ class QRobot(QObject):
         self.prev_emotion = emotion
         if self.prev_gamer_gesture is None:
             match left_gesture:
-                case 0:
-                    self.prev_gamer_gesture = GameGesture.PAPER
                 case 1:
+                    self.prev_gamer_gesture = GameGesture.PAPER
+                case 7:
                     self.prev_gamer_gesture = GameGesture.SCISSORS
-                case 2:
+                case 26:
                     self.prev_gamer_gesture = GameGesture.ROCK
                 case _:
                     self.prev_gamer_gesture = None
     
-        if self.mode == RobotMode.FINISH_GAME:
+        if self.prev_gamer_gesture and self.mode == RobotMode.FINISH_GAME:
             self.finish_game()
 
         data['Скелет'] = sceleton
