@@ -27,6 +27,7 @@ import os
 class RobotMode(Enum):  # Режимы работы робота
     DEFAULT = 'Стандартный режим'
     START_GAME = 'Начало раунда игры'
+    PLAY_GAME = 'Сама игра'
     FINISH_GAME = 'Завершение раунда игры'
     DETECT_OBJECT = 'Определение объекта'
     
@@ -293,7 +294,7 @@ class QRobot(QObject):
 
     @pyqtSlot()
     def start_game(self):
-        self.app.log(f"Начинаю игру")
+        #self.app.log(f"Начинаю игру")
         self.mode = RobotMode.START_GAME
         
         self.controller.set_servo_position(14, 2500)
@@ -301,10 +302,11 @@ class QRobot(QObject):
         self.controller.set_servo_position(23, 1800)
         
     @pyqtSlot()
-    def finish_game(self):
+    def play_game(self):
+        self.mode = RobotMode.FINISH_GAME
         robot_gesture = random.choice(list(GameGesture))
-        if self.prev_emotion == 12:  # 🙁
-            # Человек расстроен - надо подыграть
+        if self.prev_emotion[0] == 12:  # 🙁
+            self.app.log(f"Человек расстроен - надо подыграть")
             match self.prev_gamer_gesture:
                 case GameGesture.PAPER:
                     robot_gesture = GameGesture.ROCK
@@ -318,54 +320,59 @@ class QRobot(QObject):
                     self.say('Давайте переиграем')
                     return
 
-        self.app.log(f"Вижу {self.prev_gamer_gesture.value} - "
-                     f"показываю {robot_gesture.value}")
+        #self.app.log(f"Вижу {self.prev_gamer_gesture.value} - "
+        #             f"показываю {robot_gesture.value}")
 
         match robot_gesture:
             case GameGesture.PAPER:
                 self.show_paper()
+                return
             case GameGesture.SCISSORS:
                 self.show_scissors()
+                return
             case GameGesture.ROCK:
                 self.show_rock()
+                return
+
+    @pyqtSlot()
+    def finish_game(self):
+        self.mode = RobotMode.DEFAULT
+        self.app.log(f"Робот показал: {self.prev_robot_gesture.value} <--> "
+                     f"Игрок показал: {self.prev_gamer_gesture.value} ")
+
+        if self.prev_gamer_gesture == self.prev_robot_gesture:
+            self.app.log('Ничья')
+            self.say('Ничья')
+        else:
+            if ((self.prev_gamer_gesture == GameGesture.ROCK and
+                 self.prev_robot_gesture == GameGesture.SCISSORS) or
+                    (self.prev_gamer_gesture == GameGesture.SCISSORS and
+                     self.prev_robot_gesture == GameGesture.PAPER) or
+                    (self.prev_gamer_gesture == GameGesture.PAPER and
+                     self.prev_robot_gesture == GameGesture.ROCK)):
+                self.app.log('Игрок победил')
+                self.say('Вы выиграли')
+            else:
+                self.app.log('Игрок проиграл')
+                self.say('Я победил')
+
+        # Следующий раунд начнем после паузы
+        self.timer.singleShot(3000, self.start_game)
 
     # Завершилось перемещение сервоприводов
     @pyqtSlot()       
     def on_controller_command_finished(self):
-        self.app.log(f"Завершено перемещение сервоприводов. Режим: {self.mode.value}")
+        #self.app.log(f"Завершено перемещение сервоприводов. Режим: {self.mode.value}")
         match self.mode:
             case RobotMode.START_GAME:
-                self.say('Камень, ножницы, бумага. Раз, два, три.')
-                self.mode = RobotMode.FINISH_GAME
+                self.mode = RobotMode.PLAY_GAME
                 self.prev_gamer_gesture = None
+                self.say('Камень, ножницы, бумага. Раз, два, три.')
             case RobotMode.FINISH_GAME:
-                self.app.log(f"Завершение раунда игры. "
-                             f"Жест робота: {self.prev_robot_gesture.value} "
-                             f"Жест игрока: {self.prev_gamer_gesture.value} ")
-
-                if self.prev_gamer_gesture == self.prev_robot_gesture:
-                    self.app.log('Ничья')
-                    self.say('Ничья')
-                else:
-                    if ((self.prev_gamer_gesture == GameGesture.ROCK and
-                         self.prev_robot_gesture == GameGesture.SCISSORS) or
-                            (self.prev_gamer_gesture == GameGesture.SCISSORS and
-                             self.prev_robot_gesture == GameGesture.PAPER) or
-                            (self.prev_gamer_gesture == GameGesture.PAPER and
-                             self.prev_robot_gesture == GameGesture.ROCK)):
-                        self.app.log('Игрок победил')
-                        self.say('Вы выиграли')
-                    else:
-                        self.app.log('Игрок проиграл')
-                        self.say('Я победил')
-
-                self.mode = RobotMode.DEFAULT
-
-                # Следующий раунд через секунду
-                self.timer.singleShot(3000, self.start_game)
+                self.finish_game()
 
     def show_rock(self):
-        self.app.log(f"Показываю камень")
+        #self.app.log(f"Показываю камень")
         self.prev_robot_gesture = GameGesture.ROCK
         self.controller.set_servo_position(22, 1200)
         self.controller.set_servo_position(21, 1100)
@@ -374,7 +381,7 @@ class QRobot(QObject):
         self.controller.set_servo_position(25, 1700)
 
     def show_scissors(self):
-        self.app.log(f"Показываю ножницы")
+        #self.app.log(f"Показываю ножницы")
         self.prev_robot_gesture = GameGesture.SCISSORS
         self.controller.set_servo_position(22, 1200)
         self.controller.set_servo_position(21, 1100)
@@ -383,7 +390,7 @@ class QRobot(QObject):
         self.controller.set_servo_position(25, 1700)
 
     def show_paper(self):
-        self.app.log(f"Показываю бумагу")
+        #self.app.log(f"Показываю бумагу")
         self.prev_robot_gesture = GameGesture.PAPER
         self.controller.set_servo_position(22, 1500)
         self.controller.set_servo_position(21, 1500)
@@ -498,8 +505,8 @@ class QRobot(QObject):
                 case _:
                     self.prev_gamer_gesture = None
     
-        if self.prev_gamer_gesture and self.mode == RobotMode.FINISH_GAME:
-            self.finish_game()
+        if self.prev_gamer_gesture and self.mode == RobotMode.PLAY_GAME:
+            self.play_game()
 
         data['Скелет'] = sceleton
 #        with open("sceleton.json", "w") as outfile:

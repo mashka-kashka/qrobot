@@ -111,10 +111,11 @@ class QServoController(QObject):
 
             command += f"#{channel}P{position}"
 
+        self.positions = {}
+
         if command != '':
             command += f"T{int(self.period / 2)}D10\r\n"
             self.__write_command(command)
-        self.positions = {}
 
     def __write_command(self, command):
         if self.controller:
