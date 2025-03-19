@@ -98,7 +98,7 @@ class QRobotVoice(QObject):
                                 put_yo=True)
         self.mute_mic = True # глушим микрофон
         sd.play(audio, self.sample_rate)
-        time.sleep((len(audio) / self.sample_rate) + 0.5)
+        time.sleep((len(audio) / self.sample_rate) + 0.1)
         sd.stop()
         del audio
         self.mute_mic = False  # отключаем глушилку микрофона
