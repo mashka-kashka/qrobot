@@ -10,8 +10,7 @@ import sys
 import time
 
 
-# Класс для разбора речи
-class QRobotListener(QObject):
+class QRobotVoice(QObject):
     phrase_captured_signal = pyqtSignal(str)
     command_recognized_signal = pyqtSignal(str, str)
     mute_mic = False
@@ -27,8 +26,21 @@ class QRobotListener(QObject):
             self.samplerate = self.config["microphone"]["samplerate"]
             self.min_command_confidence = self.config["microphone"]["min_command_confidence"]
 
-    def mute(self, mute = True):
-        self.mute = mute
+            # Модели для синтеза голоса
+            tts = self.config["tts"]
+            self.sample_rate = tts["sample_rate"]
+            self.speaker = tts["speaker"]
+            #torch.set_num_threads(8)  # количество задействованных потоков CPU
+
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            else:
+                self.device = torch.device("cpu")
+
+            self.tts_model = torch.package.PackageImporter("../models/v4_ru.pt").load_pickle("tts_models", "model")
+            torch._C._jit_set_profiling_mode(False)
+            torch.set_grad_enabled(False)
+            self.tts_model.to(self.device)
 
     def callback(self, indata, frames, time, status):
         if status:
@@ -72,73 +84,21 @@ class QRobotListener(QObject):
                     res_command = command
 
         if max_ratio >= self.min_command_confidence:
-            self.command_recognized_signal.emit(res_command, cmd)
-#            if "reply" in command.keys():
-#                self.say(command["reply"])
+            command = commands[res_command]
+            self.command_recognized_signal.emit(command["name"], cmd)
+            if "reply" in command.keys():
+                self.say(command["reply"])
 
-# Класс для формирования речи
-class QRobotSpeaker(QObject):
-    say_finished_signal = pyqtSignal()
-
-    def __init__(self):
-        super().__init__()
-
-        self.q = queue.Queue() # Хранилище данных с микрофона
-
-        with open('config.toml', 'r') as f:
-            self.config = toml.load(f)
-            # Модель для синтеза голоса
-            tts = self.config["tts"]
-            self.sample_rate = tts["sample_rate"]
-            self.speaker = tts["speaker"]
-            if torch.cuda.is_available():
-                self.device = torch.device("cuda")
-            else:
-                self.device = torch.device("cpu")
-
-            self.tts_model = torch.package.PackageImporter("../models/v4_ru.pt").load_pickle("tts_models", "model")
-            torch._C._jit_set_profiling_mode(False)
-            torch.set_grad_enabled(False)
-            self.tts_model.to(self.device)
-            audio = self.prepare('Инициализация')
-            del audio
-
-    @pyqtSlot()
-    def listen(self):
-        dev = sd.query_devices()
-        self.prev_phrase = None
-        with sd.RawInputStream(samplerate=self.samplerate, device=len(dev) - 1,
-                               dtype="int16", channels=1, callback=self.callback):
-            rec = vosk.KaldiRecognizer(self.model, self.samplerate)
-            while True:
-                data = self.q.get()
-                if rec.AcceptWaveform(data):
-                    phrase = json.loads(rec.Result())["text"]
-                    if phrase:
-                        self.prev_phrase = None
-                        print(f"Фраза: {phrase}")
-                        self.phrase_captured_signal.emit(phrase)
-                        self.recognize_command(phrase)
-                else:
-                    phrase = json.loads(rec.PartialResult())["partial"]
-                    if phrase and phrase != self.prev_phrase:
-                        self.prev_phrase = phrase
-                        print(f"Отрывок фразы: {phrase}")
-
-    @pyqtSlot(str)
-    def prepare(self, text):
-        return self.tts_model.apply_tts(ssml_text=f'<speak><prosody rate="slow">{text}</prosody></speak>', #text + "..",
-                                        speaker=self.speaker,
-                                        sample_rate=self.sample_rate,
-                                        put_accent=True,
-                                        put_yo=True)
-
-    @pyqtSlot(str)
+    @pyqtSlot(object)
     def say(self, text):
-        print(f"Произношу фразу: {text}")
-        audio = self.prepare(text)
+        audio = self.tts_model.apply_tts(ssml_text=f'<speak><prosody rate="slow">{text}</prosody></speak>', #text + "..",
+                                speaker=self.speaker,
+                                sample_rate=self.sample_rate,
+                                put_accent=True,
+                                put_yo=True)
+        self.mute_mic = True # глушим микрофон
         sd.play(audio, self.sample_rate)
         time.sleep((len(audio) / self.sample_rate) + 0.5)
         sd.stop()
         del audio
-        self.say_finished_signal.emit()
+        self.mute_mic = False  # отключаем глушилку микрофона

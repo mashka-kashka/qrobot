@@ -4,7 +4,7 @@ from google.protobuf.json_format import MessageToDict
 
 from servo_controller import QServoController
 from camera import QRobotCamera
-from voice import QRobotListener, QRobotSpeaker
+from voice import QRobotVoice
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.python.solutions import drawing_utils as mp_drawing
@@ -38,6 +38,7 @@ class GameGesture(Enum):
     
 class QRobot(QObject):
     show_frame_signal = pyqtSignal(object)
+    say_phrase_signal = pyqtSignal(object)
 
     FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
                         'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
@@ -186,17 +187,15 @@ class QRobot(QObject):
         self.female_names = set(line.strip().lower() for line in open('female_names_rus.txt'))
         self.male_names = set(line.strip().lower() for line in open('male_names_rus.txt'))
 
-        # Модуль распознавания речи
-        self.listener_thread = QThread()
-        self.listener = QRobotListener()
-        self.listener.moveToThread(self.listener_thread)
-        self.listener.phrase_captured_signal.connect(self.on_phrase_captured)
-        self.listener.command_recognized_signal.connect(self.on_command_recognized)
-        self.listener_thread.started.connect(self.listener.listen)
-        self.listener_thread.start()
-
-        # Модуль генерации речи
-        self.speaker = QRobotSpeaker()
+        # Модуль распознавания и генерации речи
+        self.voice_thread = QThread()
+        self.voice = QRobotVoice()
+        self.voice.moveToThread(self.voice_thread)
+        self.voice.phrase_captured_signal.connect(self.on_phrase_captured)
+        self.voice.command_recognized_signal.connect(self.on_command_recognized)
+        self.say_phrase_signal.connect(self.voice.say)
+        self.voice_thread.started.connect(self.voice.listen)
+        self.voice_thread.start()
 
         # Контроллер сервоприводов
         self.controller = QServoController()
@@ -228,9 +227,10 @@ class QRobot(QObject):
         return None, None
 
     def say(self, text):
-#        self.listener.mute(True)
-        self.speaker.say(text)
-#        self.listener.mute(False)
+#        self.say_phrase_signal.emit(text)
+#        self.voice.mute(True)
+        self.voice.say(text)
+#        self.voice.mute(False)
 
     @pyqtSlot(str)
     def on_phrase_captured(self, phrase):
@@ -252,13 +252,8 @@ class QRobot(QObject):
                 self.say(f'Извините, не расслышал ваше имя.')
 
     @pyqtSlot(str, str)
-    def on_command_recognized(self, command_id, phrase):
-        command = self.config["command"][command_id]
-        command_name = command["name"]
+    def on_command_recognized(self, command_name, phrase):
         self.app.log(f"Получена команда: {command_name}")
-        if "reply" in command.keys():
-            self.prev_command_name = command_name
-            self.say(command["reply"])
 
         match command_name:
             case 'да':
@@ -357,7 +352,7 @@ class QRobot(QObject):
                 self.say('Я победил')
 
         # Следующий раунд начнем после паузы
-        self.timer.singleShot(3000, self.start_game)
+        self.timer.singleShot(1000, self.start_game)
 
     # Завершилось перемещение сервоприводов
     @pyqtSlot()       
