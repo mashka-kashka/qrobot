@@ -39,7 +39,7 @@ class QServoController(QObject):
         for channel in self.servos:
             servo = self.servos[channel]
             command += f"#{channel}P{servo['neutral']}"
-        command += 'T0D0\r\n'
+        command += 'T500D500\r\n'
         self.__write_command(command)
 
     def get_servos_count(self):
