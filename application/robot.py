@@ -98,7 +98,7 @@ class QRobot(QObject):
         self.label_font = QFont("Courier", 64)
         self.robot_data = {}
         self.servo_values = np.zeros(32)
-
+        self.prev_emotion = None
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
 
@@ -278,9 +278,9 @@ class QRobot(QObject):
             case 'отмена':
                 self.mode = RobotMode.DEFAULT
                 self.controller.set_servo_position(14, 1500)
-                self.controller.set_servo_position(17, 1500)
-                self.controller.set_servo_position(23, 1500)
-                self.show_paper()
+                #self.controller.set_servo_position(17, 1500)
+                #self.controller.set_servo_position(23, 1500)
+                #self.show_paper()
                 
             case 'определи':
                 self.mode = RobotMode.DETECT_OBJECT
@@ -293,14 +293,14 @@ class QRobot(QObject):
         self.mode = RobotMode.START_GAME
         
         self.controller.set_servo_position(14, 2500)
-        self.controller.set_servo_position(17, 1700)
-        self.controller.set_servo_position(23, 1800)
+        #self.controller.set_servo_position(17, 1700)
+        #self.controller.set_servo_position(23, 1800)
         
     @pyqtSlot()
     def play_game(self):
         self.mode = RobotMode.FINISH_GAME
         robot_gesture = random.choice(list(GameGesture))
-        if self.prev_emotion[0] == 12:  # 🙁
+        if self.prev_emotion and self.prev_emotion[0] == 12:  # 🙁
             self.app.log(f"Человек расстроен - надо подыграть")
             match self.prev_gamer_gesture:
                 case GameGesture.PAPER:
