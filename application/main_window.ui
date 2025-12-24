@@ -45,11 +45,42 @@
          <normaloff>../../robot/qrobot/icons/eye.png</normaloff>../../robot/qrobot/icons/eye.png</iconset>
        </attribute>
        <attribute name="title">
-        <string>Камера</string>
+        <string>Датчики</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
+        <item row="1" column="1">
+         <widget class="QLabel" name="lbPulse">
+          <property name="text">
+           <string>Пульс:</string>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="0">
+         <widget class="QGraphicsView" name="gv_thermo"/>
+        </item>
+        <item row="0" column="1">
          <widget class="QGraphicsView" name="gv_camera"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbMaxTemperature">
+          <property name="text">
+           <string>Температура в кадре:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="lbSPO2">
+          <property name="text">
+           <string>Сатурация:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="lbFinger">
+          <property name="text">
+           <string>Температура пальца:</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>

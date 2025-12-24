@@ -22,8 +22,6 @@ class QRobotCamera(QObject):
             self.format = self.config["camera"]["format"]
             self.size = (self.config["camera"]["width"], self.config["camera"]["height"])
         try:
-            import pdb
-            pdb.set_trace()
             if platform.uname().node == "raspberrypi":
                 from picamera2 import Picamera2
                 self.picam2 = Picamera2()
