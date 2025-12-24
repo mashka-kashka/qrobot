@@ -1,5 +1,5 @@
 [camera]
-index = 0
+index = 1
 #format = "RGB888"
 format = "BGR888"
 width = 1024
@@ -80,16 +80,15 @@ period = 100
 #18
 [servos.15]
 begin = 2000
-end = 1000
+end = 800
+neutral = 1400
+name = "Поворот шеи"
+
+[servos.16]
+begin = 1200
+end = 2000
 neutral = 1500
 name = "Подъём головы"
-
-# Нужно заменить сервопривод
-#[servos.16]
-#begin = 1400
-#end = 1600
-#neutral = 1550
-#name = "Поворот шеи"
 
 [servos.14]
 begin = 500
