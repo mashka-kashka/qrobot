@@ -2,6 +2,7 @@ from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer,
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
 
+from sensors import QRobotSensors
 from servo_controller import QServoController
 from camera import QRobotCamera
 from voice import QRobotVoice
@@ -39,6 +40,7 @@ class GameGesture(Enum):
 class QRobot(QObject):
     show_frame_signal = pyqtSignal(object)
     say_phrase_signal = pyqtSignal(object)
+    show_sensors_data_signal = pyqtSignal(object, object, object, object)
 
     FACE_BLENDSHAPES = ['_neutral', 'browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft',
                         'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft', 'cheekSquintRight',
@@ -206,6 +208,12 @@ class QRobot(QObject):
         self.camera.frame_captured_signal.connect(self.on_frame_captured)
         self.camera.start()
         self.camera.get_frame() # Получение первого кадра
+
+        # Датчики
+        self.sensors = QRobotSensors()
+        self.sensors.data_captured_signal.connect(self.on_data_captured)
+        self.sensors.start()
+        self.sensors.get_data() # Получение данных
         
     def stop(self):
         self.camera.stop()
@@ -216,6 +224,12 @@ class QRobot(QObject):
         self.show_frame_signal.emit(frame)
         # Получение следующего кадра
         QTimer.singleShot(10, self.camera.get_frame)
+
+    @pyqtSlot(object, object, object, object)
+    def on_data_captured(self, tdata, tfinger, spo2, pulse):
+        self.show_sensors_data_signal.emit(tdata, tfinger, spo2, pulse)
+        # Получение следующего набора данных
+        QTimer.singleShot(10, self.sensors.get_data)
 
     # Определение имени по фразе
     def detect_name(self, phrase):

@@ -1,11 +1,13 @@
 from time import localtime, strftime
 from PyQt6 import QtCore, QtWidgets
-from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage
+from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage, qRgb
 from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QPushButton
 from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
-
+import matplotlib as mpl
+import matplotlib.cm as cm
+import numpy as np
 
 class QRobotMainWindow(QMainWindow):
     def __init__(self, app):
@@ -18,9 +20,21 @@ class QRobotMainWindow(QMainWindow):
 
         self.logger = self.ui.teLog
 
-        self.scene = QGraphicsScene()
-        self.ui.gv_camera.setScene(self.scene)
-        self.scenePixmapItem = None
+        # Камера
+        self.camera_scene = QGraphicsScene()
+        self.ui.gv_camera.setScene(self.camera_scene)
+        self.cameraScenePixmapItem = None
+
+        # Тепловизор
+        self.thermo_scene = QGraphicsScene()
+        self.ui.gv_thermo.setScene(self.thermo_scene)
+        self.thermoScenePixmapItem = None
+        self.thermoImage = QImage(32, 24, QImage.Format.Format_RGB32)
+        self.Tmax = 40
+        self.Tmin = 20
+        self.norm = mpl.colors.Normalize(vmin=self.Tmin, vmax=self.Tmax, clip=True)
+        self.cmap = cm.get_cmap('viridis')
+        self.mapper = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
 
         servos_layout = self.ui.gl_servos
         btn_reset_servos = QPushButton("Сброс")
@@ -69,6 +83,31 @@ class QRobotMainWindow(QMainWindow):
 
         #print(f"Сервопривод: {channel} Значение: {value}")
 
+    @pyqtSlot(object, object, object, object)
+    def show_sensors_data(self, thermo, tfinger, spo2, pulse):
+        for y in range(24):
+            for x in range(32):
+                value = thermo[x, y]
+                r, g, b, a = self.mapper.to_rgba(value, bytes=True)
+                self.thermoImage.setPixel(x, y, qRgb(r, g, b))
+
+        _pixmap = QPixmap.fromImage(self.thermoImage)
+
+        if self.thermoScenePixmapItem is None:
+            self.thermoScenePixmapItem = QGraphicsPixmapItem(_pixmap)
+            self.thermo_scene.addItem(self.thermoScenePixmapItem)
+            self.thermoScenePixmapItem.setZValue(0)
+        else:
+            self.thermoScenePixmapItem.setPixmap(_pixmap)
+
+        self.ui.gv_thermo.fitInView(self.thermo_scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+        self.ui.gv_thermo.show()
+
+        self.ui.lbMaxTemperature.setText(f"Температура в кадре от {thermo.min()} до {thermo.max()}")
+        self.ui.lbFinger.setText(f"Температура пальца: {tfinger}")
+        self.ui.lbPulse.setText(f"Пульс: {pulse}")
+        self.ui.lbSPO2.setText(f"Сатурация: {spo2}")
+
     @pyqtSlot(object)
     def show_frame(self, frame):
         if not isinstance(frame, QImage):
@@ -81,14 +120,14 @@ class QRobotMainWindow(QMainWindow):
 
         _pixmap = QPixmap.fromImage(frame)
 
-        if self.scenePixmapItem is None:
-            self.scenePixmapItem = QGraphicsPixmapItem(_pixmap)
-            self.scene.addItem(self.scenePixmapItem)
-            self.scenePixmapItem.setZValue(0)
+        if self.cameraScenePixmapItem is None:
+            self.cameraScenePixmapItem = QGraphicsPixmapItem(_pixmap)
+            self.camera_scene.addItem(self.cameraScenePixmapItem)
+            self.cameraScenePixmapItem.setZValue(0)
         else:
-            self.scenePixmapItem.setPixmap(_pixmap)
+            self.cameraScenePixmapItem.setPixmap(_pixmap)
 
-        self.ui.gv_camera.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+        self.ui.gv_camera.fitInView(self.camera_scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.ui.gv_camera.show()
 
     def log(self, message, type=LogMessageType.STATUS):
