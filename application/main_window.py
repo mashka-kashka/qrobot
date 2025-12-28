@@ -87,7 +87,7 @@ class QRobotMainWindow(QMainWindow):
     def show_sensors_data(self, thermo, tfinger, spo2, pulse):
         for y in range(24):
             for x in range(32):
-                value = thermo[x, y]
+                value = thermo[y, x]
                 r, g, b, a = self.mapper.to_rgba(value, bytes=True)
                 self.thermoImage.setPixel(x, y, qRgb(r, g, b))
 
@@ -104,7 +104,7 @@ class QRobotMainWindow(QMainWindow):
         self.ui.gv_thermo.show()
 
         self.ui.lbMaxTemperature.setText(f"Температура в кадре от {thermo.min()} до {thermo.max()}")
-        self.ui.lbFinger.setText(f"Температура пальца: {tfinger}")
+        self.ui.lbFinger.setText(f"Температура пальца: {tfinger:.1f}")
         self.ui.lbPulse.setText(f"Пульс: {pulse}")
         self.ui.lbSPO2.setText(f"Сатурация: {spo2}")
 
