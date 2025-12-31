@@ -30,8 +30,8 @@ class QRobotMainWindow(QMainWindow):
         self.ui.gv_thermo.setScene(self.thermo_scene)
         self.thermoScenePixmapItem = None
         self.thermoImage = QImage(32, 24, QImage.Format.Format_RGB32)
-        self.Tmax = 40
         self.Tmin = 20
+        self.Tmax = 40  
         self.norm = mpl.colors.Normalize(vmin=self.Tmin, vmax=self.Tmax, clip=True)
         self.cmap = cm.get_cmap('viridis')
         self.mapper = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
@@ -85,6 +85,11 @@ class QRobotMainWindow(QMainWindow):
 
     @pyqtSlot(object, object, object, object)
     def show_sensors_data(self, thermo, tfinger, spo2, pulse):
+        self.ui.lbMaxTemperature.setText(f"Температура в кадре от {thermo.min()} до {thermo.max()}")
+        self.ui.lbFinger.setText(f"Температура пальца: {tfinger:.1f}")
+        self.ui.lbPulse.setText(f"Пульс: {pulse}")
+        self.ui.lbSPO2.setText(f"Сатурация: {spo2}")
+        
         for y in range(24):
             for x in range(32):
                 value = thermo[y, x]
@@ -102,11 +107,6 @@ class QRobotMainWindow(QMainWindow):
 
         self.ui.gv_thermo.fitInView(self.thermo_scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.ui.gv_thermo.show()
-
-        self.ui.lbMaxTemperature.setText(f"Температура в кадре от {thermo.min()} до {thermo.max()}")
-        self.ui.lbFinger.setText(f"Температура пальца: {tfinger:.1f}")
-        self.ui.lbPulse.setText(f"Пульс: {pulse}")
-        self.ui.lbSPO2.setText(f"Сатурация: {spo2}")
 
     @pyqtSlot(object)
     def show_frame(self, frame):

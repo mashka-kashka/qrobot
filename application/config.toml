@@ -85,9 +85,9 @@ neutral = 1400
 name = "Поворот шеи"
 
 [servos.16]
-begin = 1200
-end = 2000
-neutral = 1500
+begin = 1500
+end = 2500
+neutral = 2000
 name = "Подъём головы"
 
 [servos.14]

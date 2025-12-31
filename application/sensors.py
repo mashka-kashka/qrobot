@@ -36,6 +36,7 @@ class QRobotSensors(QObject):
     @pyqtSlot()
     def start(self):
         self.running = True
+        
         while (False == self.max30102.begin()):
             print("init fail!")
             time.sleep(1)
@@ -58,13 +59,18 @@ class QRobotSensors(QObject):
         if not self.running:
             return
             
-        buf = self.mlx90640.read(1544)
-        data = np.frombuffer(buf[4:1540], dtype=np.int16)
-        #norm = np.uint8((data/100 - self.Tmin)*255/(self.Tmax-self.Tmin))
-        norm = np.uint8(data/100)
-        #norm = np.linspace(start=20, stop=40, num=768)
-        norm.shape = (24,32)
+        data = np.linspace(start=2000, stop=4000, num=768)
+            
         try:
+            buf = self.mlx90640.read(1544)
+            data = np.frombuffer(buf[4:1540], dtype=np.int16)
+            norm = np.uint8(data/100)
+        except:
+            pass
+            
+        try:
+            #norm = np.uint8((data/100 - self.Tmin)*255/(self.Tmax-self.Tmin))
+            norm.shape = (24,32)
             self.max30102.get_heartbeat_SPO2()
             self.data_captured_signal.emit(norm, 
                                            self.mlx90614.get_obj_temp(), 
