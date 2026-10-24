@@ -22,8 +22,18 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="1" column="0">
+     <widget class="QTextEdit" name="teLog">
+      <property name="frameShape">
+       <enum>QFrame::Panel</enum>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="0">
-     <widget class="QTabWidget" name="tabWidget">
+     <widget class="QTabWidget" name="tabWidge">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>1</horstretch>
@@ -37,7 +47,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tabCamera">
        <attribute name="icon">
@@ -58,8 +68,12 @@
         <item row="0" column="0">
          <widget class="QGraphicsView" name="gv_thermo"/>
         </item>
-        <item row="0" column="1">
-         <widget class="QGraphicsView" name="gv_camera"/>
+        <item row="2" column="1">
+         <widget class="QLabel" name="lbSPO2">
+          <property name="text">
+           <string>Сатурация:</string>
+          </property>
+         </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="lbMaxTemperature">
@@ -68,18 +82,186 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLabel" name="lbSPO2">
-          <property name="text">
-           <string>Сатурация:</string>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="lbFinger">
           <property name="text">
            <string>Температура пальца:</string>
           </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QGraphicsView" name="gv_camera"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabRemind">
+       <attribute name="icon">
+        <iconset>
+         <normaloff>../icons/alarm-clock.png</normaloff>../icons/alarm-clock.png</iconset>
+       </attribute>
+       <attribute name="title">
+        <string>Напоминания</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="twEvents">
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>350</number>
+          </attribute>
+          <row>
+           <property name="text">
+            <string>1</string>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string>2</string>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string>3</string>
+           </property>
+          </row>
+          <column>
+           <property name="text">
+            <string>Время</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Напоминание</string>
+           </property>
+          </column>
+          <item row="0" column="0">
+           <property name="text">
+            <string>9:00</string>
+           </property>
+          </item>
+          <item row="0" column="1">
+           <property name="text">
+            <string>Примите витамины из таблетницы</string>
+           </property>
+          </item>
+          <item row="1" column="0">
+           <property name="text">
+            <string>11:00</string>
+           </property>
+          </item>
+          <item row="1" column="1">
+           <property name="text">
+            <string>Вы записаны к терапевту в 12 часов</string>
+           </property>
+          </item>
+          <item row="2" column="0">
+           <property name="text">
+            <string>18:00</string>
+           </property>
+          </item>
+          <item row="2" column="1">
+           <property name="text">
+            <string>Примите одну таблетку Парацетамола</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabMessages">
+       <attribute name="icon">
+        <iconset>
+         <normaloff>../icons/email.png</normaloff>../icons/email.png</iconset>
+       </attribute>
+       <attribute name="title">
+        <string>Сообщения</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_6">
+        <item row="0" column="0" colspan="2">
+         <widget class="QTableWidget" name="tblMessages">
+          <property name="rowCount">
+           <number>3</number>
+          </property>
+          <property name="columnCount">
+           <number>3</number>
+          </property>
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>220</number>
+          </attribute>
+          <row>
+           <property name="text">
+            <string>1</string>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string>2</string>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string>3</string>
+           </property>
+          </row>
+          <column>
+           <property name="text">
+            <string>Когда</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>От кого</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Сообщение</string>
+           </property>
+          </column>
+          <item row="0" column="0">
+           <property name="text">
+            <string>Сегодня</string>
+           </property>
+          </item>
+          <item row="0" column="1">
+           <property name="text">
+            <string>policlinic@moscow.ru</string>
+           </property>
+          </item>
+          <item row="0" column="2">
+           <property name="text">
+            <string>Вы записаны сегодня на прием к терапевту в 12 часов.</string>
+           </property>
+          </item>
+          <item row="1" column="0">
+           <property name="text">
+            <string>Сегодня</string>
+           </property>
+          </item>
+          <item row="1" column="1">
+           <property name="text">
+            <string>doctor@clinic.msk</string>
+           </property>
+          </item>
+          <item row="1" column="2">
+           <property name="text">
+            <string>У вас повышена температура. Нужно принять одну таблетку парацетамола</string>
+           </property>
+          </item>
+          <item row="2" column="0">
+           <property name="text">
+            <string>Сегодня</string>
+           </property>
+          </item>
+          <item row="2" column="1">
+           <property name="text">
+            <string>dochka@mail.ru</string>
+           </property>
+          </item>
+          <item row="2" column="2">
+           <property name="text">
+            <string>Не забудь принять витамины из таблетницы.</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
@@ -128,16 +310,6 @@
       </widget>
      </widget>
     </item>
-    <item row="1" column="0">
-     <widget class="QTextEdit" name="teLog">
-      <property name="frameShape">
-       <enum>QFrame::Panel</enum>
-      </property>
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -152,6 +324,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="separator"/>
+   <addaction name="actionRemindNow"/>
+   <addaction name="actionSendToDoctor"/>
    <addaction name="actionExit"/>
   </widget>
   <action name="actionExit">
@@ -167,6 +341,30 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+X</string>
+   </property>
+  </action>
+  <action name="actionSendToDoctor">
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/doctor.png</normaloff>../icons/doctor.png</iconset>
+   </property>
+   <property name="text">
+    <string>Отправить доктору</string>
+   </property>
+   <property name="toolTip">
+    <string>Отправить показания датчиков доктору</string>
+   </property>
+  </action>
+  <action name="actionRemindNow">
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/alarm.png</normaloff>../icons/alarm.png</iconset>
+   </property>
+   <property name="text">
+    <string>Напомнить сейчас</string>
+   </property>
+   <property name="toolTip">
+    <string>Сделать напоминание сейчас</string>
    </property>
   </action>
  </widget>
