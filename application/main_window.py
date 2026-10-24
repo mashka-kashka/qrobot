@@ -36,6 +36,13 @@ class QRobotMainWindow(QMainWindow):
         self.cmap = cm.get_cmap('viridis')
         self.mapper = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
 
+        # Отправка сообщения доктору
+        self.action_send_to_doctor.triggered.connect(app.robot.on_send_to_doctor)
+
+        # Напоминание
+        self.action_remind_now.triggered.connect(self.on_remind_now)
+
+        # Сервоприводы
         servos_layout = self.ui.gl_servos
         btn_reset_servos = QPushButton("Сброс")
         btn_reset_servos.clicked.connect(self.on_reset_servos)
@@ -61,6 +68,16 @@ class QRobotMainWindow(QMainWindow):
             slider.setProperty("neutral", neutral)
             servos_layout.addWidget(slider, id + 1, 1)
             self.sliders.append(slider)
+
+    @pyqtSlot()
+    def on_remind_now(self):
+        item = self.twEvents.currentItem()
+        active_event = self.twEvents.currentRow()
+
+        if active_event != -1 and item.text():
+            self.app.robot.say("Для вас напоминание. " + item.text())
+        else:
+            self.log("Ни одно напоминание не выбрано", LogMessageType.WARNING)
 
     @pyqtSlot()
     def on_reset_servos(self):

@@ -23,6 +23,12 @@ import random
 import math
 import toml
 import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+from log_message_type import LogMessageType
 
 
 class RobotMode(Enum):  # Режимы работы робота
@@ -103,6 +109,10 @@ class QRobot(QObject):
         self.prev_emotion = None
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
+        self.temperature = '-'
+        self.saturation = '-'
+        self.pulse = '-'
+        self.mp_image = None
 
         # Список наименований ключевых точек
         QRobot.ROBOT_LANDMARKS = []
@@ -167,6 +177,16 @@ class QRobot(QObject):
             self.emotions_model = pickle.load(model_file)
             self.emotions_model.to(self.device)
 
+            email = self.config["email"]
+            self.email_doctor = email["doctor"]
+            self.email_robot = email["robot"]
+            self.email_smtp_server = email["smtp_server"]
+            self.email_smtp_port = email["smtp_port"]
+            self.email_imap_server = email["imap_server"]
+            self.email_imap_port = email["imap_port"]
+            self.email_subject = email["subject"]
+            self.email_receive = email["receive"]
+
         # Модель распознавания объектов
         base_options = python.BaseOptions(model_asset_path='../models/efficientdet_lite0.tflite')
         options = vision.ObjectDetectorOptions(base_options=base_options,
@@ -228,6 +248,10 @@ class QRobot(QObject):
     @pyqtSlot(object, object, object, object)
     def on_data_captured(self, tdata, tfinger, spo2, pulse):
         self.show_sensors_data_signal.emit(tdata, tfinger, spo2, pulse)
+        self.tdata = tdata
+        self.temperature = tfinger
+        self.saturation = spo2
+        self.pulse = pulse
         # Получение следующего набора данных
         QTimer.singleShot(10, self.sensors.get_data)
 
@@ -409,16 +433,17 @@ class QRobot(QObject):
                 
     # Обработка кадра
     def process_frame(self, image):
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
-        height = mp_image.height
-        width = mp_image.width
+        self.image = image
+        self.mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+        height = self.mp_image.height
+        width = self.mp_image.width
 
         data = {'Кадр' : {'Ширина' : width, 'Высота' : height}}
 
         emotion = 0
 
         # Распознавание лиц
-        face_detection_result = self.face_detector.detect(mp_image)
+        face_detection_result = self.face_detector.detect(self.mp_image)
         annotated_image = self.draw_faces_on_image(image, face_detection_result)
 
         if len(face_detection_result.face_landmarks) > 0:
@@ -449,7 +474,7 @@ class QRobot(QObject):
                         # Определяем центр правой ладони на изображении
                         pcx = (rect[0] - rect[2]) / 2
                         pcy = (rect[1] - rect[3]) / 3
-                        detection_result = self.object_detector.detect(mp_image)
+                        detection_result = self.object_detector.detect(self.mp_image)
                         for detection in detection_result.detections:
                             category = detection.categories[0].category_name
                             translation = self.object_labels.get(category)
@@ -481,7 +506,7 @@ class QRobot(QObject):
                     #print(f"{palm}: {gesture}")
 
         sceleton = {}
-        pose_detection_result = self.pose_detector.detect(mp_image)
+        pose_detection_result = self.pose_detector.detect(self.mp_image)
         pose_landmarks_list = pose_detection_result.pose_landmarks
         if pose_landmarks_list:
             for i, idx in enumerate(QRobot.POSE_LANDMARK_IDS):
@@ -937,3 +962,40 @@ class QRobot(QObject):
         painter.end()
 
         return image
+
+    @pyqtSlot()
+    def on_send_to_doctor(self):
+        if os.getenv("EMAIL_PASS"):
+            self.app.log(f"Не могу отправить почту. Забыл пароль.")
+            return
+
+        # Создание объекта MIME
+        message = MIMEMultipart()
+        message['From'] = self.email_robot
+        message['To'] = self.email_doctor
+        message['Subject'] = self.email_subject
+
+        # Добавление текста сообщения
+        body = f"""Здравствуйте, доктор!
+Передаю вам данные пациента.
+Температура: {self.temperature}
+Сатурация: {self.saturation}
+Пульс: {self.pulse}
+--
+С уважением,
+робот Анатолий."""
+        message.attach(MIMEText(body, 'plain'))
+
+        # Отправка сообщения
+        try:
+            with smtplib.SMTP(self.email_smtp_server, 
+                              self.email_smtp_port) as server:
+                server.starttls()
+                server.login(self.email_robot, os.getenv("EMAIL_PASS"))
+                server.sendmail(self.email_robot, 
+                                self.email_doctor,
+                                message.as_string())
+            self.app.log("Письмо доктору успешно отправлено!")
+        except Exception as e:
+            self.app.log(f"Не удалось отправить письмо: {str(e)}",
+                         LogMessageType.ERROR)

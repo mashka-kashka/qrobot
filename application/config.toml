@@ -5,6 +5,16 @@ format = "BGR888"
 width = 1024
 height = 768
 
+[email]
+doctor = maria.muravieva@mail.ru
+robot = robot_anatoly@mail.ru
+smtp_server = smtp.mail.ru
+smtp_port = 465
+imap_server = imap.mail.ru
+imap_port = 993
+subject = 'Сведения о пациенте №1.'
+receive = 1
+
 [microphone]
 #device = 17
 device = 4

@@ -324,8 +324,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="separator"/>
-   <addaction name="actionRemindNow"/>
-   <addaction name="actionSendToDoctor"/>
+   <addaction name="action_send_to_doctor"/>
+   <addaction name="action_send_to_doctor"/>
    <addaction name="actionExit"/>
   </widget>
   <action name="actionExit">
@@ -343,7 +343,7 @@
     <string>Ctrl+X</string>
    </property>
   </action>
-  <action name="actionSendToDoctor">
+  <action name="action_send_to_doctor">
    <property name="icon">
     <iconset>
      <normaloff>../icons/doctor.png</normaloff>../icons/doctor.png</iconset>
@@ -355,7 +355,7 @@
     <string>Отправить показания датчиков доктору</string>
    </property>
   </action>
-  <action name="actionRemindNow">
+  <action name="action_remind_now">
    <property name="icon">
     <iconset>
      <normaloff>../icons/alarm.png</normaloff>../icons/alarm.png</iconset>
