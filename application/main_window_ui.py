@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '/home/sergey/git/qrobot/application/main_window.ui'
+# Form implementation generated from reading ui file 'main_window.ui'
 #
 # Created by: PyQt6 UI code generator 6.11.0
 #
@@ -64,6 +64,8 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtWidgets.QGridLayout(self.tabRemind)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.twEvents = QtWidgets.QTableWidget(parent=self.tabRemind)
+        self.twEvents.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.twEvents.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.twEvents.setObjectName("twEvents")
         self.twEvents.setColumnCount(2)
         self.twEvents.setRowCount(3)
@@ -99,6 +101,8 @@ class Ui_MainWindow(object):
         self.gridLayout_6 = QtWidgets.QGridLayout(self.tabMessages)
         self.gridLayout_6.setObjectName("gridLayout_6")
         self.tblMessages = QtWidgets.QTableWidget(parent=self.tabMessages)
+        self.tblMessages.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.tblMessages.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.tblMessages.setRowCount(3)
         self.tblMessages.setColumnCount(3)
         self.tblMessages.setObjectName("tblMessages")
@@ -148,7 +152,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeading|QtCore.Qt.AlignmentFlag.AlignLeft|QtCore.Qt.AlignmentFlag.AlignTop)
         self.scrollArea.setObjectName("scrollArea")
         self.sa_servos = QtWidgets.QWidget()
-        self.sa_servos.setGeometry(QtCore.QRect(0, 0, 717, 300))
+        self.sa_servos.setGeometry(QtCore.QRect(0, 0, 98, 28))
         self.sa_servos.setObjectName("sa_servos")
         self.gridLayout_5 = QtWidgets.QGridLayout(self.sa_servos)
         self.gridLayout_5.setObjectName("gridLayout_5")
@@ -184,12 +188,11 @@ class Ui_MainWindow(object):
         self.action_remind_now.setIcon(icon7)
         self.action_remind_now.setObjectName("action_remind_now")
         self.toolBar.addSeparator()
-        self.toolBar.addAction(self.action_remind_now)
         self.toolBar.addAction(self.action_send_to_doctor)
         self.toolBar.addAction(self.actionExit)
 
         self.retranslateUi(MainWindow)
-        self.tabWidge.setCurrentIndex(2)
+        self.tabWidge.setCurrentIndex(0)
         self.actionExit.triggered.connect(MainWindow.close) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -220,7 +223,7 @@ class Ui_MainWindow(object):
         item = self.twEvents.item(1, 0)
         item.setText(_translate("MainWindow", "11:00"))
         item = self.twEvents.item(1, 1)
-        item.setText(_translate("MainWindow", "Вы записаны к терапевту в 12 часов"))
+        item.setText(_translate("MainWindow", "Вы записаны к терапевту в двенадцать часов"))
         item = self.twEvents.item(2, 0)
         item.setText(_translate("MainWindow", "18:00"))
         item = self.twEvents.item(2, 1)

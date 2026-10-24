@@ -47,7 +47,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabCamera">
        <attribute name="icon">
@@ -105,6 +105,12 @@
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="0">
          <widget class="QTableWidget" name="twEvents">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
           <attribute name="horizontalHeaderDefaultSectionSize">
            <number>350</number>
           </attribute>
@@ -150,7 +156,7 @@
           </item>
           <item row="1" column="1">
            <property name="text">
-            <string>Вы записаны к терапевту в 12 часов</string>
+            <string>Вы записаны к терапевту в двенадцать часов</string>
            </property>
           </item>
           <item row="2" column="0">
@@ -178,6 +184,12 @@
        <layout class="QGridLayout" name="gridLayout_6">
         <item row="0" column="0" colspan="2">
          <widget class="QTableWidget" name="tblMessages">
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
           <property name="rowCount">
            <number>3</number>
           </property>
@@ -294,8 +306,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>717</width>
-             <height>300</height>
+             <width>98</width>
+             <height>28</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_5">
@@ -324,7 +336,6 @@
     <bool>false</bool>
    </attribute>
    <addaction name="separator"/>
-   <addaction name="action_send_to_doctor"/>
    <addaction name="action_send_to_doctor"/>
    <addaction name="actionExit"/>
   </widget>
