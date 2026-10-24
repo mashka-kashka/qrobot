@@ -965,7 +965,7 @@ class QRobot(QObject):
 
     @pyqtSlot()
     def on_send_to_doctor(self):
-        if os.getenv("EMAIL_PASS"):
+        if not os.getenv("EMAIL_PASS"):
             self.app.log(f"Не могу отправить почту. Забыл пароль.")
             return
 
@@ -978,7 +978,7 @@ class QRobot(QObject):
         # Добавление текста сообщения
         body = f"""Здравствуйте, доктор!
 Передаю вам данные пациента.
-Температура: {self.temperature}
+Температура: {self.temperature:.1f}
 Сатурация: {self.saturation}
 Пульс: {self.pulse}
 --

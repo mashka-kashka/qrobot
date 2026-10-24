@@ -37,10 +37,10 @@ class QRobotMainWindow(QMainWindow):
         self.mapper = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
 
         # Отправка сообщения доктору
-        self.action_send_to_doctor.triggered.connect(app.robot.on_send_to_doctor)
+        self.ui.action_send_to_doctor.triggered.connect(app.robot.on_send_to_doctor)
 
         # Напоминание
-        self.action_remind_now.triggered.connect(self.on_remind_now)
+        self.ui.action_remind_now.triggered.connect(self.on_remind_now)
 
         # Сервоприводы
         servos_layout = self.ui.gl_servos
@@ -71,8 +71,8 @@ class QRobotMainWindow(QMainWindow):
 
     @pyqtSlot()
     def on_remind_now(self):
-        item = self.twEvents.currentItem()
-        active_event = self.twEvents.currentRow()
+        item = self.ui.twEvents.currentItem()
+        active_event = self.ui.twEvents.currentRow()
 
         if active_event != -1 and item.text():
             self.app.robot.say("Для вас напоминание. " + item.text())

@@ -6,11 +6,11 @@ width = 1024
 height = 768
 
 [email]
-doctor = maria.muravieva@mail.ru
-robot = robot_anatoly@mail.ru
-smtp_server = smtp.mail.ru
-smtp_port = 465
-imap_server = imap.mail.ru
+doctor = 'maria.muravieva@mail.ru'
+robot = 'robot_anatoly@mail.ru'
+smtp_server = 'smtp.mail.ru'
+smtp_port = 587
+imap_server = 'imap.mail.ru'
 imap_port = 993
 subject = 'Сведения о пациенте №1.'
 receive = 1
