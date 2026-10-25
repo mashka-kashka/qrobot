@@ -1,8 +1,8 @@
 from time import localtime, strftime
-from PyQt6 import QtCore, QTimer, QTime
+from PyQt6 import QtCore
 from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage, qRgb
-from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QPushButton
-from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QPushButton, QTableWidgetItem
+from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QTime
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
 import matplotlib as mpl
@@ -75,19 +75,22 @@ class QRobotMainWindow(QMainWindow):
 
     @pyqtSlot()
     def on_update_time(self):
-        current_time = QTime.currentTime().toString("HH:mm:ss")
+        current_time = QTime.currentTime()
         events = self.ui.twEvents.rowCount()
         for event_id in range(events):
-            time_item = self.ui.twEvents.get_item(event_id, 0)
+            time_item = self.ui.twEvents.item(event_id, 0)
             time_object = QTime.fromString(time_item.text(), "HH:mm:ss")
             if time_object.isValid():
-                seconds_diff = time_object.secsTo(current_time)
+
+                seconds_diff = current_time.secsTo(time_object)
+                if seconds_diff < 0:
+                    seconds_diff += 24 * 3600 # Напоминание будет завтра
 
                 # Вычисляем часы, минуты и остаток секунд
                 hours, remainder = divmod(seconds_diff, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                remind_item = self.ui.twEvents.get_(event_id, 1)
-                remind_item.setText(f"{hours}:{minutes}:{seconds}")
+                remind_item = QTableWidgetItem(f"{hours}:{minutes}:{seconds}")
+                self.ui.twEvents.setItem(event_id, 1, remind_item)
 
                 if seconds_diff < 2: # Нужно напомнить
                     self.remind(event_id)
@@ -101,7 +104,7 @@ class QRobotMainWindow(QMainWindow):
 
     def remind(self, event_id):
         if event_id != -1:
-            item = self.ui.twEvents.get_item(event_id, 2)
+            item = self.ui.twEvents.item(event_id, 2)
             self.app.robot.say("Для вас напоминание. " + item.text())
         else:
             self.log("Ни одно напоминание не выбрано", LogMessageType.WARNING)

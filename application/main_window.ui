@@ -146,7 +146,7 @@
           </column>
           <item row="0" column="0">
            <property name="text">
-            <string>9:00</string>
+            <string>09:00:00</string>
            </property>
           </item>
           <item row="0" column="2">
@@ -156,7 +156,7 @@
           </item>
           <item row="1" column="0">
            <property name="text">
-            <string>11:00</string>
+            <string>11:00:00</string>
            </property>
           </item>
           <item row="1" column="2">
@@ -166,7 +166,7 @@
           </item>
           <item row="2" column="0">
            <property name="text">
-            <string>18:00</string>
+            <string>18:00:00</string>
            </property>
           </item>
           <item row="2" column="2">
@@ -340,7 +340,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="separator"/>
+   <addaction name="action_remind_now"/>
    <addaction name="action_send_to_doctor"/>
    <addaction name="actionExit"/>
   </widget>

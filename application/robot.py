@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer, QRectF
+from PyQt6.QtCore import QThread, QObject, QPoint, pyqtSignal, pyqtSlot, QTimer, QRectF, QTime
 from PyQt6.QtGui import QFont, QImage, QPainter, QPen, QColor
 from google.protobuf.json_format import MessageToDict
 
@@ -22,6 +22,7 @@ import torch
 import random
 import math
 import toml
+import csv
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -185,7 +186,7 @@ class QRobot(QObject):
             self.email_imap_server = email["imap_server"]
             self.email_imap_port = email["imap_port"]
             self.email_subject = email["subject"]
-            self.email_receive = email["receive"]
+            self.email_receive = email["receive_period"]
 
         # Модель распознавания объектов
         base_options = python.BaseOptions(model_asset_path='../models/efficientdet_lite0.tflite')
@@ -208,6 +209,16 @@ class QRobot(QObject):
         # Имена
         self.female_names = set(line.strip().lower() for line in open('female_names_rus.txt'))
         self.male_names = set(line.strip().lower() for line in open('male_names_rus.txt'))
+
+        # Числа
+        self.numbers = {}
+        with open('numbers_0_59.csv', mode='r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader) # Пропускаем заголовок
+            for row in reader:
+                if len(row) == 2:
+                    num, name = row
+                    self.numbers[int(num)] = name
 
         # Модуль распознавания и генерации речи
         self.voice_thread = QThread()
@@ -288,12 +299,25 @@ class QRobot(QObject):
             else:
                 self.prev_command_name = 'знакомство'
                 self.say(f'Извините, не расслышал ваше имя.')
+                
+    def say_current_time(self):
+        current_time = QTime.currentTime()
+        h = self.numbers[current_time.hour()]
+        m = self.numbers[current_time.minute()]
+        s = self.numbers[current_time.second()]
+
+        self.app.log(f"H: {h}")
+        self.app.log(f"M: {m}")
+        self.app.log(f"S: {s}")
 
     @pyqtSlot(str, str)
     def on_command_recognized(self, command_name, phrase):
         self.app.log(f"Получена команда: {command_name}")
 
         match command_name:
+            case 'время':
+                self.say_current_time()
+
             case 'да':
                 match self.prev_command_name:
                     case 'уточнение имени':

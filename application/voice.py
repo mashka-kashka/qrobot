@@ -83,11 +83,14 @@ class QRobotVoice(QObject):
                     max_ratio = ratio
                     res_command = command
 
+        print(f"Ближайшая команда: {res_command} ({max_ratio} / {self.min_command_confidence})")
+        
         if max_ratio >= self.min_command_confidence:
             command = commands[res_command]
             self.command_recognized_signal.emit(command["name"], cmd)
             if "reply" in command.keys():
                 self.say(command["reply"])
+
 
     @pyqtSlot(object)
     def say(self, text):
