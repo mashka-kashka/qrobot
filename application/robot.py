@@ -211,14 +211,10 @@ class QRobot(QObject):
         self.male_names = set(line.strip().lower() for line in open('male_names_rus.txt'))
 
         # Числа
-        self.numbers = {}
-        with open('numbers_0_59.csv', mode='r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            next(reader) # Пропускаем заголовок
-            for row in reader:
-                if len(row) == 2:
-                    num, name = row
-                    self.numbers[int(num)] = name
+        self.num_words = self.load_to_dict("numbers_0_59.csv")
+        self.hours_words = self.load_to_dict("hours_declension.csv")
+        self.minutes_words = self.load_to_dict("minutes_declension.csv")
+        self.seconds_words = self.load_to_dict("seconds_declension.csv")
 
         # Модуль распознавания и генерации речи
         self.voice_thread = QThread()
@@ -248,6 +244,37 @@ class QRobot(QObject):
         
     def stop(self):
         self.camera.stop()
+
+    def load_to_dict(self, filepath, is_numeric_value=False):
+        """Загружает CSV-файл в словарь (ключ - int, значение - str)"""
+        result_dict = {}
+        with open(filepath, mode="r", encoding="utf-8-sig") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:
+                    key, value = row
+                    result_dict[int(key)] = value
+        return result_dict
+
+    def convert_time_to_text(self, h, m, s):
+        """Преобразует компоненты времени в текст с правильными окончаниями"""
+        # Логика для правильного рода числительных (один/одна, два/две)
+        h_text = self.num_words[h]
+
+        # Для минут и секунд меняем род на женский (один -> одна, два -> две)
+        m_text = self.num_words[m]
+        if m in [1, 21, 31, 41, 51]:
+            m_text = m_text.replace("один", "одна")
+        elif m in:
+            m_text = m_text.replace("два", "две")
+
+        s_text = self.num_words[s]
+        if s in [1, 21, 31, 41, 51]:
+            s_text = s_text.replace("один", "одна")
+        elif s in:
+            s_text = s_text.replace("два", "две")
+
+        return f"{h_text} {self.hours_words[h]} {m_text} {self.minutes_words[m]} {s_text} {self.seconds_words[s]}"
 
     @pyqtSlot(object)
     def on_frame_captured(self, frame):
@@ -306,9 +333,10 @@ class QRobot(QObject):
         m = self.numbers[current_time.minute()]
         s = self.numbers[current_time.second()]
 
-        self.app.log(f"H: {h}")
-        self.app.log(f"M: {m}")
-        self.app.log(f"S: {s}")
+        time = self.convert_time_to_text(h, m, s)
+        self.app.log(f"Сейчаc: {time}")
+
+        self.say(time)
 
     @pyqtSlot(str, str)
     def on_command_recognized(self, command_name, phrase):
