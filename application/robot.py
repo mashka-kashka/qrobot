@@ -342,14 +342,12 @@ class QRobot(QObject):
                 
     def say_current_time(self):
         current_time = QTime.currentTime()
-        h = self.numbers[current_time.hour()]
-        m = self.numbers[current_time.minute()]
-        s = self.numbers[current_time.second()]
-
-        time = self.convert_time_to_text(h, m, s)
-        self.app.log(f"Сейчаc: {time}")
-
-        self.say(time)
+        time = self.convert_time_to_text(current_time.hour(), 
+                                         current_time.minute(), 
+                                         current_time.second())
+        time_phrase =f"Сейчас {time}"
+        self.app.log(time_phrase)
+        self.say(time_phrase)
 
     @pyqtSlot(str, str)
     def on_command_recognized(self, command_name, phrase):
@@ -358,6 +356,9 @@ class QRobot(QObject):
         match command_name:
             case 'время':
                 self.say_current_time()
+                
+            case 'отправь':
+                self.on_send_to_doctor()
 
             case 'да':
                 match self.prev_command_name:

@@ -6,7 +6,8 @@ width = 1024
 height = 768
 
 [email]
-doctor = 'maria.muravieva@mail.ru'
+#doctor = 'maria.muravieva@mail.ru'
+doctor = 'smurav@mail.ru'
 robot = 'robot_anatoly@mail.ru'
 smtp_server = 'smtp.mail.ru'
 smtp_port = 587
@@ -24,7 +25,7 @@ min_command_confidence = 70
 
 [command.send]
 name = 'отправь'
-activation = [ 'отправь', 'данные', 'показания', 'доктору' ]
+activation = [ 'отправь доктору', 'отправь данные', 'отправь показания', 'доктору' ]
 reply = "отправляю"
 
 [command.receive]
@@ -35,7 +36,6 @@ reply = "получаю"
 [command.time]
 name = 'время'
 activation = [ 'сколько времени', 'сколько сейчас времени', 'который час']
-reply = "сейчас"
 
 [command.remind]
 name = 'напомни'
