@@ -13,7 +13,7 @@ smtp_port = 587
 imap_server = 'imap.mail.ru'
 imap_port = 993
 subject = 'Сведения о пациенте №1.'
-receive = 1
+receive_period = 60000
 
 [microphone]
 #device = 17
@@ -21,6 +21,26 @@ device = 4
 model = "../models/vosk-model-small-ru-0.22"
 samplerate = 44100
 min_command_confidence = 70
+
+[command.send]
+name = 'отправь'
+activation = [ 'отправь', 'данные', 'показания', 'доктору' ]
+reply = "отправляю"
+
+[command.receive]
+name = 'получи'
+activation = [ 'получи', 'почту' ]
+reply = "получаю"
+
+[command.time]
+name = 'время'
+activation = [ 'сколько', 'сейчас', 'времени', 'который', 'час' ]
+reply = "сейчас"
+
+[command.remind]
+name = 'напомни'
+activation = [ 'напомни', 'мне', 'через' ]
+reply = "хорошо"
 
 [command.listen]
 name = 'слушай'
@@ -83,6 +103,9 @@ gestures_model = "../models/камень_ножницы_бумага.mdl"
 gestures_labels = "../models/жесты.csv"
 emotions_model = "../models/emotions3.mdl"
 emotions_labels = "../models/эмоции.csv"
+
+[time]
+numbers = 'numbers_0_59.csv'
 
 [controller]
 period = 100

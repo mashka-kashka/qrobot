@@ -1,13 +1,12 @@
 from time import localtime, strftime
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QTimer, QTime
 from PyQt6.QtGui import QTextFormat, QColor, QTextCursor, QPixmap, QImage, qRgb
 from PyQt6.QtWidgets import QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QLabel, QSlider, QPushButton
-from PyQt6.QtCore import pyqtSignal, Qt, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot
 from main_window_ui import Ui_MainWindow
 from log_message_type import LogMessageType
 import matplotlib as mpl
 import matplotlib.cm as cm
-import numpy as np
 
 class QRobotMainWindow(QMainWindow):
     def __init__(self, app):
@@ -24,6 +23,11 @@ class QRobotMainWindow(QMainWindow):
         self.camera_scene = QGraphicsScene()
         self.ui.gv_camera.setScene(self.camera_scene)
         self.cameraScenePixmapItem = None
+
+        # Таймер обновления времени до напоминаний
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.on_update_time)
+        self.timer.start(1000)
 
         # Тепловизор
         self.thermo_scene = QGraphicsScene()
@@ -70,11 +74,34 @@ class QRobotMainWindow(QMainWindow):
             self.sliders.append(slider)
 
     @pyqtSlot()
-    def on_remind_now(self):
-        item = self.ui.twEvents.currentItem()
-        active_event = self.ui.twEvents.currentRow()
+    def on_update_time(self):
+        current_time = QTime.currentTime().toString("HH:mm:ss")
+        events = self.ui.twEvents.rowCount()
+        for event_id in range(events):
+            time_item = self.ui.twEvents.get_item(event_id, 0)
+            time_object = QTime.fromString(time_item.text(), "HH:mm:ss")
+            if time_object.isValid():
+                seconds_diff = time_object.secsTo(current_time)
 
-        if active_event != -1 and item.text():
+                # Вычисляем часы, минуты и остаток секунд
+                hours, remainder = divmod(seconds_diff, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                remind_item = self.ui.twEvents.get_(event_id, 1)
+                remind_item.setText(f"{hours}:{minutes}:{seconds}")
+
+                if seconds_diff < 2: # Нужно напомнить
+                    self.remind(event_id)
+            else:
+                self.log(f"Неверный формат времени: {time_item.text()}", 
+                         LogMessageType.WARNING)
+
+    @pyqtSlot()
+    def on_remind_now(self):
+        self.remind(self.ui.twEvents.currentRow())
+
+    def remind(self, event_id):
+        if event_id != -1:
+            item = self.ui.twEvents.get_item(event_id, 2)
             self.app.robot.say("Для вас напоминание. " + item.text())
         else:
             self.log("Ни одно напоминание не выбрано", LogMessageType.WARNING)
