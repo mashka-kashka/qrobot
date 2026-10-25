@@ -257,23 +257,36 @@ class QRobot(QObject):
         return result_dict
 
     def convert_time_to_text(self, h, m, s):
-        """Преобразует компоненты времени в текст с правильными окончаниями"""
-        # Логика для правильного рода числительных (один/одна, два/две)
+        """
+        Преобразует часы, минуты и секунды в текст, используя словари.
+        Автоматически корректирует женский род для минут и секунд.
+        """
+        # Выписываем диапазоны для замены рода числительных (один -> одна, два -> две)
+        ends_with_1 = [1, 21, 31, 41, 51]
+        ends_with_2 = [2, 22, 32, 42, 52]
+
+        # --- 1. Обработка ЧАСОВ (всегда мужской род из словаря) ---
         h_text = self.num_words[h]
 
-        # Для минут и секунд меняем род на женский (один -> одна, два -> две)
-        m_text = self.num_words[m]
-        if m in [1, 21, 31, 41, 51]:
-            m_text = m_text.replace("один", "одна")
-        elif m in:
-            m_text = m_text.replace("два", "две")
+        # --- 2. Обработка МИНУТ (корректируем род на женский) ---
+        if m in ends_with_1:
+            # Для 21, 31... берем основу десятков и добавляем "одна"
+            m_text = self.num_words[m].replace("один", "одна") if m > 10 else "одна"
+        elif m in ends_with_2:
+            # Для 2, 22, 32... берем основу десятков и добавляем "две"
+            m_text = self.num_words[m].replace("два", "две") if m > 10 else "две"
+        else:
+            m_text = self.num_words[m]
 
-        s_text = self.num_words[s]
-        if s in [1, 21, 31, 41, 51]:
-            s_text = s_text.replace("один", "одна")
-        elif s in:
-            s_text = s_text.replace("два", "две")
+        # --- 3. Обработка СЕКУНД (корректируем род на женский) ---
+        if s in ends_with_1:
+            s_text = self.num_words[s].replace("один", "одна") if s > 10 else "одна"
+        elif s in ends_with_2:
+            s_text = self.num_words[s].replace("два", "две") if s > 10 else "две"
+        else:
+            s_text = self.num_words[s]
 
+        # --- 4. Финальная сборка строки ---
         return f"{h_text} {self.hours_words[h]} {m_text} {self.minutes_words[m]} {s_text} {self.seconds_words[s]}"
 
     @pyqtSlot(object)
